@@ -17,7 +17,7 @@ export default function Header() {
     >
       <Link href={"/"} className="flex items-center">
         <Image
-          src="/images/logo.png"
+          src="/images/logo.PNG"
           alt="Mink'd by Mya"
           width={180}
           height={90}
@@ -58,7 +58,7 @@ export default function Header() {
         <div className="flex items-center justify-between">
           <Link href={"/"} className="flex items-center">
             <Image
-              src="/images/logo.png"
+              src="/images/logo.PNG"
               alt="Mink'd by Mya"
               width={160}
               height={80}
@@ -71,13 +71,19 @@ export default function Header() {
         <nav className="">
           <ul className="flex flex-col mt-8 gap-8 text-black">
             <li>
-              <Link href={"/"} onClick={() => setOpen(false)}>Home</Link>
+              <Link href={"/"} onClick={() => setOpen(false)}>
+                Home
+              </Link>
             </li>
             <li>
-              <Link href={"/services"} onClick={() => setOpen(false)}>Services</Link>
+              <Link href={"/services"} onClick={() => setOpen(false)}>
+                Services
+              </Link>
             </li>
             <li>
-              <Link href={"/booking-policy"} onClick={() => setOpen(false)}>Booking Policy</Link>
+              <Link href={"/booking-policy"} onClick={() => setOpen(false)}>
+                Booking Policy
+              </Link>
             </li>
           </ul>
         </nav>
