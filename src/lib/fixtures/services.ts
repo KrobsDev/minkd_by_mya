@@ -24,6 +24,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/fbomou2wcd",
     categoryId: "lashes",
+    price: 300,
+    durationMinutes: 120,
   },
   {
     id: "hybrid-full-set",
@@ -39,6 +41,8 @@ export const services: Service[] = [
     popular: true,
     paystackLink: "https://paystack.shop/pay/fvanue9sgi",
     categoryId: "lashes",
+    price: 350,
+    durationMinutes: 150,
   },
   {
     id: "volume-full-set",
@@ -53,6 +57,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/k6sx7yh3hk",
     categoryId: "lashes",
+    price: 400,
+    durationMinutes: 180,
   },
   {
     id: "wet-set",
@@ -66,6 +72,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/vyo-230nbe",
     categoryId: "lashes",
+    price: 400,
+    durationMinutes: 150,
   },
   {
     id: "wispy",
@@ -79,6 +87,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/r87hno4hwl",
     categoryId: "lashes",
+    price: 350,
+    durationMinutes: 150,
   },
   {
     id: "bottom-lashes",
@@ -93,6 +103,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/dm1zidm01j",
     categoryId: "lashes",
+    price: 100,
+    durationMinutes: 60,
   },
   // Lash Refills
   {
@@ -107,6 +119,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/e4qlzmjfag",
     categoryId: "lashRefills",
+    price: 150,
+    durationMinutes: 60,
   },
   {
     id: "hybrid-refill",
@@ -120,6 +134,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/hvy4liku30",
     categoryId: "lashRefills",
+    price: 180,
+    durationMinutes: 75,
   },
   {
     id: "volume-refill",
@@ -133,6 +149,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/ih2qm1msxg",
     categoryId: "lashRefills",
+    price: 200,
+    durationMinutes: 90,
   },
   {
     id: "wet-set-refill",
@@ -146,6 +164,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/9k-ib98z5t",
     categoryId: "lashRefills",
+    price: 200,
+    durationMinutes: 75,
   },
   // Brows
   {
@@ -161,6 +181,8 @@ export const services: Service[] = [
     popular: true,
     paystackLink: "https://paystack.shop/pay/ss91h3lywl",
     categoryId: "brows",
+    price: 800,
+    durationMinutes: 180,
   },
   {
     id: "ombre-brows",
@@ -174,6 +196,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/ikvt-3q2t3",
     categoryId: "brows",
+    price: 800,
+    durationMinutes: 180,
   },
   {
     id: "combination-brows",
@@ -187,6 +211,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/00fgen601n",
     categoryId: "brows",
+    price: 900,
+    durationMinutes: 210,
   },
   // Lips
   {
@@ -201,6 +227,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/iths3g7eaq",
     categoryId: "lips",
+    price: 400,
+    durationMinutes: 90,
   },
   {
     id: "lip-blush-both",
@@ -214,6 +242,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/p8qjh91br2",
     categoryId: "lips",
+    price: 700,
+    durationMinutes: 120,
   },
   {
     id: "lip-blush-ombre",
@@ -227,6 +257,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/p8qjh91br2",
     categoryId: "lips",
+    price: 800,
+    durationMinutes: 120,
   },
   // Touch-Ups
   {
@@ -241,6 +273,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/wf01s6yd29",
     categoryId: "touchUps",
+    price: 400,
+    durationMinutes: 90,
   },
   {
     id: "ombre-brows-touchup",
@@ -254,6 +288,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/687oend31d",
     categoryId: "touchUps",
+    price: 400,
+    durationMinutes: 90,
   },
   {
     id: "combination-brows-touchup",
@@ -267,6 +303,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/j76wdfs3wt",
     categoryId: "touchUps",
+    price: 450,
+    durationMinutes: 105,
   },
   {
     id: "lip-blush-touchup-bottom",
@@ -280,6 +318,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/3jbvv-o-xq",
     categoryId: "touchUps",
+    price: 200,
+    durationMinutes: 45,
   },
   {
     id: "lip-blush-touchup-both",
@@ -293,6 +333,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/h5lowcyagy",
     categoryId: "touchUps",
+    price: 350,
+    durationMinutes: 60,
   },
   {
     id: "lip-blush-touchup-ombre",
@@ -306,6 +348,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/ip08oz59q9",
     categoryId: "touchUps",
+    price: 400,
+    durationMinutes: 60,
   },
   // Extras
   {
@@ -321,6 +365,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/n09kvq8l17",
     categoryId: "extras",
+    price: 150,
+    durationMinutes: 45,
   },
   {
     id: "brow-tint",
@@ -334,6 +380,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/566yqgsrbb",
     categoryId: "extras",
+    price: 50,
+    durationMinutes: 30,
   },
   {
     id: "brow-lamination-tint",
@@ -347,6 +395,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/zw03vius71",
     categoryId: "extras",
+    price: 180,
+    durationMinutes: 60,
   },
   {
     id: "lash-removal",
@@ -360,6 +410,8 @@ export const services: Service[] = [
     ],
     paystackLink: "https://paystack.shop/pay/w6ik5e3rje",
     categoryId: "extras",
+    price: 50,
+    durationMinutes: 30,
   },
 ];
 
