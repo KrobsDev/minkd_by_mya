@@ -33,7 +33,7 @@ export default function TestimonialsSection() {
         </p>
 
         {/* carousel */}
-        <div className="embla w-full" ref={emblaRef}>
+        <div className="embla w-full overflow-hidden" ref={emblaRef}>
           <div className="embla__container testimonial">
             <div className="embla__slide">
               <TestimonialContent

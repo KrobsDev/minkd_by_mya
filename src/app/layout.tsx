@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import { Dancing_Script, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
+import ConditionalLayout from "@/components/layout/ConditionalLayout";
 import { Toaster } from "sonner";
 
 const geistSans = Geist({
@@ -36,9 +35,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable}
           ${dancingScript.variable} antialiased`}
       >
-        <Header />
-        {children}
-        <Footer />
+        <ConditionalLayout>
+          {children}
+        </ConditionalLayout>
         <Toaster position="top-right" richColors />
       </body>
     </html>

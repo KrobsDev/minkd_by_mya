@@ -6,4 +6,6 @@ export interface Service {
   popular?: boolean;
   paystackLink: string;
   categoryId: string;
+  price: number;
+  durationMinutes: number;
 }

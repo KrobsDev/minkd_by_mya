@@ -59,9 +59,21 @@ body {
 }
 
 .embla__slide {
-  flex: 0 0 30%;
+  flex: 0 0 90%;
   min-width: 0;
   margin-right: 20px;
+}
+
+@media (min-width: 768px) {
+  .embla__slide {
+    flex: 0 0 45%;
+  }
+}
+
+@media (min-width: 1024px) {
+  .embla__slide {
+    flex: 0 0 30%;
+  }
 }
 
 .testimonial .embla__slide {

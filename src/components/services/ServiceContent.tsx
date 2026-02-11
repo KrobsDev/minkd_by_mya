@@ -35,6 +35,8 @@ function mapDbServiceToService(dbService: DbService): Service {
     categoryId: dbService.category_id,
     paystackLink: dbService.paystack_link,
     popular: dbService.popular,
+    price: dbService.price,
+    durationMinutes: dbService.duration_minutes,
   };
 }
 
@@ -149,6 +151,14 @@ export default function ServiceContent() {
                   <h3 className="text-lg font-semibold text-gray-900">
                     {service.name}
                   </h3>
+                  <div className="flex items-center justify-between">
+                    <p className="text-2xl font-bold text-pink-600">
+                      GHS {service.price}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {service.durationMinutes} mins
+                    </p>
+                  </div>
                   <p className="text-sm leading-6 text-gray-600">
                     {service.description}
                   </p>

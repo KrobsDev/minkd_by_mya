@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import {
   Calendar,
@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import api from "@/lib/api/client";
 import type { Service } from "@/lib/models/service";
 import { toast } from "sonner";
+import Link from "next/link";
 
 declare global {
   interface Window {
@@ -126,6 +127,7 @@ export default function BookingModal({
   });
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [tempHideModal, setTempHideModal] = useState(false);
 
   const today = startOfDay(new Date());
   const maxDate = addDays(today, 90);
@@ -222,6 +224,9 @@ export default function BookingModal({
         bookingId: bookingResult.bookingId,
       });
 
+      // Hide booking modal to allow interaction with Paystack popup
+      setTempHideModal(true);
+
       // Open Paystack inline popup
       const handler = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
@@ -262,19 +267,23 @@ export default function BookingModal({
             prev ? { ...prev, reference: response.reference } : null
           );
           setPaymentLoading(false);
+          setTempHideModal(false);
           toast.success("Payment successful! Your booking is confirmed.");
         },
         onClose: () => {
           setPaymentLoading(false);
+          setTempHideModal(false);
           toast.info("Payment window closed. You can try again.");
         },
       });
 
       handler.openIframe();
+      setPaymentLoading(false);
     } catch (error) {
       console.error("Payment initialization error:", error);
       toast.error("Failed to initialize payment. Please try again.");
       setPaymentLoading(false);
+      setTempHideModal(false);
     }
   };
 
@@ -293,6 +302,7 @@ export default function BookingModal({
       });
       setBookingResult(null);
       setPaymentComplete(false);
+      setTempHideModal(false);
     }, 300);
   };
 
@@ -326,7 +336,7 @@ export default function BookingModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open && !tempHideModal} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
@@ -642,8 +652,15 @@ export default function BookingModal({
             </div>
 
             <p className="text-xs text-gray-500 text-center">
-              By confirming, you agree to our booking terms. A confirmation
-              email will be sent to you.
+              By confirming, you agree to our{" "}
+              <Link
+                href="/booking-policy"
+                className="text-pink-600 underline hover:text-pink-700"
+                target="_blank"
+              >
+                booking policy
+              </Link>
+              . A confirmation email will be sent to you.
             </p>
 
             <div className="flex gap-3">

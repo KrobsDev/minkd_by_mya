@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   Calendar,
@@ -58,11 +59,15 @@ export default function AdminSidebar() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex items-center h-16 px-6 border-b border-gray-200">
-            <Link href="/admin" className="flex items-center gap-2">
-              <span className="text-xl font-bold text-pink-600 font-(family-name:--font-dancing-script)">
-                Mink'd by Mya
-              </span>
+          <div className="flex items-center justify-center h-28 px-6 border-b border-gray-200">
+            <Link href="/admin" className="flex items-center">
+              <Image
+                src="/images/logo.png"
+                alt="Mink'd by Mya"
+                width={240}
+                height={120}
+                className="h-20 w-auto"
+              />
             </Link>
           </div>
 

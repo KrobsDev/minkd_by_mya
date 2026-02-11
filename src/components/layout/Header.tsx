@@ -2,6 +2,7 @@
 import { cn } from "@/lib/utils/cn";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 
 export default function Header() {
@@ -14,8 +15,15 @@ export default function Header() {
         top-0 left-0 right-0 pt-8 md:max-w-[70%] mx-auto flex items-center
         justify-between px-8"
     >
-      <Link href={"/"} className="text-xl font-bold text-white">
-        Mink'd by Mya
+      <Link href={"/"} className="flex items-center">
+        <Image
+          src="/images/logo.png"
+          alt="Mink'd by Mya"
+          width={180}
+          height={90}
+          className="w-36 h-auto brightness-0 invert"
+          priority
+        />
       </Link>
 
       <nav className="hidden md:block">
@@ -27,7 +35,7 @@ export default function Header() {
             <Link href={"/services"}>Services</Link>
           </li>
           <li>
-            <Link href={"#"}>Contact</Link>
+            <Link href={"/booking-policy"}>Booking Policy</Link>
           </li>
         </ul>
       </nav>
@@ -48,8 +56,14 @@ export default function Header() {
         )}
       >
         <div className="flex items-center justify-between">
-          <Link href={"/"} className="text-xl font-bold text-pink-500">
-            Mink'd by Mya
+          <Link href={"/"} className="flex items-center">
+            <Image
+              src="/images/logo.png"
+              alt="Mink'd by Mya"
+              width={160}
+              height={80}
+              className="w-32 h-auto"
+            />
           </Link>
           <X onClick={() => setOpen(!open)} />
         </div>
@@ -57,13 +71,13 @@ export default function Header() {
         <nav className="">
           <ul className="flex flex-col mt-8 gap-8 text-black">
             <li>
-              <Link href={"/"}>Home</Link>
+              <Link href={"/"} onClick={() => setOpen(false)}>Home</Link>
             </li>
             <li>
-              <Link href={"#"}>Services</Link>
+              <Link href={"/services"} onClick={() => setOpen(false)}>Services</Link>
             </li>
             <li>
-              <Link href={"#"}>Lashes</Link>
+              <Link href={"/booking-policy"} onClick={() => setOpen(false)}>Booking Policy</Link>
             </li>
           </ul>
         </nav>

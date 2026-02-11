@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
-import { siInstagram, siSnapchat, siX } from "simple-icons";
+import { siInstagram, siTiktok } from "simple-icons";
 
 export default function Hero() {
   return (
@@ -52,7 +52,7 @@ export default function Hero() {
               </Button>
             </Link>
             <Link href="/services">
-              <Button variant="outline" className="border-white text-white hover:bg-white/10 px-8 py-6 text-lg">
+              <Button variant="outline" className="bg-transparent border-white text-white hover:bg-white hover:text-pink-600 px-8 py-6 text-lg">
                 View Services
               </Button>
             </Link>
@@ -64,19 +64,14 @@ export default function Hero() {
           className="flex md:flex-col gap-8 absolute md:left-10 mx-auto
             bottom-10 md:bottom-auto"
         >
-          <Link className="w-4 h-4 hover:opacity-80 transition-opacity" href="https://instagram.com/minkedbymya" target="_blank" rel="noopener noreferrer">
+          <Link className="w-4 h-4 hover:opacity-80 transition-opacity" href="https://www.instagram.com/_minkdbymya" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24" fill="white">
               <path d={`${siInstagram.path}`} />
             </svg>
           </Link>
-          <Link className="w-4 h-4 hover:opacity-80 transition-opacity" href="https://x.com" target="_blank" rel="noopener noreferrer">
+          <Link className="w-4 h-4 hover:opacity-80 transition-opacity" href="https://vm.tiktok.com/ZGdmTbcC4" target="_blank" rel="noopener noreferrer">
             <svg viewBox="0 0 24 24" fill="white">
-              <path d={`${siX.path}`} />
-            </svg>
-          </Link>
-          <Link className="w-4 h-4 hover:opacity-80 transition-opacity" href="https://snapchat.com" target="_blank" rel="noopener noreferrer">
-            <svg viewBox="0 0 24 24" fill="white">
-              <path d={`${siSnapchat.path}`} />
+              <path d={`${siTiktok.path}`} />
             </svg>
           </Link>
         </div>
