@@ -19,9 +19,9 @@ export default function Header() {
         <Image
           src="/images/logo.PNG"
           alt="Mink'd by Mya"
-          width={180}
+          width={90}
           height={90}
-          className="w-36 h-auto brightness-0 invert"
+          className="w-20 h-auto brightness-0 invert"
           priority
         />
       </Link>
