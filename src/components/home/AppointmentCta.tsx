@@ -29,7 +29,7 @@ export default function AppointmentCta() {
             Schedule Appointment
           </Button>
         </Link>
-        <p className="text-sm italic text-gray-500">
+        <p className="text-sm italic text-gray-500 text-center">
           Availability is limited. Appointments are secured once payment is
           completed.
         </p>

@@ -69,7 +69,7 @@ export function getCustomerConfirmationEmail(data: BookingEmailData): string {
               <!-- Important Info -->
               <div style="background-color: #FEF3C7; border-radius: 8px; padding: 16px; margin-bottom: 30px;">
                 <p style="margin: 0; color: #92400E; font-size: 14px; line-height: 1.5;">
-                  <strong>Please note:</strong> Kindly arrive 5-10 minutes before your appointment. If you need to reschedule or cancel, please contact us at least 24 hours in advance.
+                  <strong>Please note:</strong> Kindly arrive 5-10 minutes before your appointment. If you need to reschedule or cancel, please contact us at least 6-24 hours in advance.
                 </p>
               </div>
 
@@ -78,7 +78,7 @@ export function getCustomerConfirmationEmail(data: BookingEmailData): string {
                 <strong>Location:</strong> Accra, Ghana
               </p>
               <p style="margin: 0; color: #4B5563; font-size: 14px;">
-                <strong>Contact:</strong> hello@minkedbymya.com
+                <strong>Contact:</strong> minkdbymya1@gmail.com
               </p>
             </td>
           </tr>

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
+import { sendBookingConfirmationEmails } from "@/lib/email/send";
+import { format } from "date-fns";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -48,17 +50,54 @@ export async function POST(request: Request) {
 
   if (resolvedBookingId) {
     // Update booking status
-    const { error: bookingError } = await supabase
+    const { data: updatedBooking, error: bookingError } = await supabase
       .from("bookings")
       .update({
         payment_status: "paid",
         paystack_reference: reference,
         status: "confirmed",
       })
-      .eq("id", resolvedBookingId);
+      .eq("id", resolvedBookingId)
+      .select(`
+        *,
+        services:service_id (
+          name
+        )
+      `)
+      .single();
 
     if (bookingError) {
       console.error("Error updating booking:", bookingError);
+    }
+
+    // Send confirmation emails after payment is verified
+    if (updatedBooking && !bookingError) {
+      const formattedDate = format(
+        new Date(updatedBooking.appointment_date),
+        "EEEE, MMMM d, yyyy"
+      );
+      const formattedTime = format(
+        new Date(`2000-01-01T${updatedBooking.appointment_time}`),
+        "h:mm a"
+      );
+
+      const emailResult = await sendBookingConfirmationEmails({
+        customerName: updatedBooking.customer_name,
+        customerEmail: updatedBooking.customer_email,
+        customerPhone: updatedBooking.customer_phone,
+        serviceName: updatedBooking.services?.name || "Service",
+        appointmentDate: formattedDate,
+        appointmentTime: formattedTime,
+        bookingReference: updatedBooking.id.slice(0, 8).toUpperCase(),
+      });
+
+      if (emailResult.skipped) {
+        console.warn("⚠️  Emails skipped:", emailResult.error);
+      } else if (!emailResult.success) {
+        console.error("❌ Email sending failed:", emailResult.error);
+      } else {
+        console.log("✅ Emails sent after payment verification");
+      }
     }
   }
 

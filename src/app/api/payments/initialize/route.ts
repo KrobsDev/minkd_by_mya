@@ -59,8 +59,8 @@ export async function POST(request: Request) {
     },
     body: JSON.stringify({
       email: booking.customer_email,
-      // Paystack expects amount in pesewas (kobo for NGN)
-      amount: Math.round(booking.services.price * 100),
+      // Fixed deposit amount: GHS 100 = 10000 pesewas
+      amount: 10000,
       currency: "GHS",
       reference: `booking_${bookingId}_${Date.now()}`,
       callback_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"}/booking/success?bookingId=${bookingId}`,
@@ -96,6 +96,6 @@ export async function POST(request: Request) {
     authorization_url: paystackResponse.data.authorization_url,
     access_code: paystackResponse.data.access_code,
     reference: paystackResponse.data.reference,
-    amount: Math.round(booking.services.price * 100), // Amount in pesewas for frontend
+    amount: 10000, // Fixed deposit amount in pesewas (GHS 100)
   });
 }

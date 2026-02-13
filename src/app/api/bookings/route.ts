@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { sendBookingConfirmationEmails } from "@/lib/email/send";
-import { format } from "date-fns";
 
 export async function GET() {
   const supabase = await createServiceClient();
@@ -127,42 +125,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Format date and time for emails
-    const formattedDate = format(
-      new Date(appointmentDate),
-      "EEEE, MMMM d, yyyy",
-    );
-    const formattedTime = format(
-      new Date(`2000-01-01T${appointmentTime}`),
-      "h:mm a",
-    );
-
-    // Send confirmation emails
-    const emailResult = await sendBookingConfirmationEmails({
-      customerName,
-      customerEmail,
-      customerPhone,
-      serviceName: service.name,
-      appointmentDate: formattedDate,
-      appointmentTime: formattedTime,
-      bookingReference: booking.id.slice(0, 8).toUpperCase(),
-    });
-
-    if (emailResult.skipped) {
-      console.warn("⚠️  Emails skipped:", emailResult.error);
-      console.warn("📧 To enable emails: Set SMTP_USER and SMTP_PASS in .env.local");
-    } else if (!emailResult.success) {
-      console.error("❌ Email sending failed:", emailResult.error);
-    } else {
-      console.log("✅ Emails sent successfully:", {
-        customer: emailResult.customerEmailId,
-        admin: emailResult.adminEmailId,
-      });
-    }
+    // Emails will be sent after payment verification, not at booking creation
 
     return NextResponse.json({
       booking,
-      emailSent: emailResult.success,
       paystackLink: service.paystack_link,
     });
   } catch (error) {

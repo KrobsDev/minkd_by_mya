@@ -12,8 +12,8 @@ export default function TestimonialsSection() {
   ]);
 
   return (
-    <Section className="bg-[#FFF8FC] py-[10%]">
-      <div className="flex flex-col md:items-center gap-4">
+    <Section className="bg-[#FFF8FC] py-[10%] overflow-hidden">
+      <div className="flex flex-col md:items-center gap-4 w-full min-w-0">
         <span className="flex gap-2">
           <EyeClosed /> What Our Clients Are Saying
         </span>
@@ -33,7 +33,7 @@ export default function TestimonialsSection() {
         </p>
 
         {/* carousel */}
-        <div className="embla w-full overflow-hidden" ref={emblaRef}>
+        <div className="embla w-full max-w-full overflow-hidden" ref={emblaRef}>
           <div className="embla__container testimonial">
             <div className="embla__slide">
               <TestimonialContent

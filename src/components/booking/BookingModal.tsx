@@ -79,7 +79,7 @@ interface BookingModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type BookingStep = "datetime" | "details" | "confirm" | "success";
+type BookingStep = "datetime" | "details" | "confirm" | "verifying" | "success";
 
 interface BookingFormData {
   date: Date | null;
@@ -197,7 +197,7 @@ export default function BookingModal({
     setLoading(true);
 
     try {
-      // Create the booking
+      // Create the booking with pending status
       const { data: result } = await api.post("/bookings", {
         serviceId: service.id,
         customerName: formData.name,
@@ -212,19 +212,22 @@ export default function BookingModal({
         bookingId: result.booking.id,
         reference: "",
       });
-      setStep("success");
+
+      // Immediately trigger payment — don't go to success step yet
+      setLoading(false);
+      await handlePayment(result.booking.id);
     } catch (error) {
       console.error("Booking error:", error);
       const message =
         error instanceof Error ? error.message : "Failed to create booking";
       toast.error(message);
-    } finally {
       setLoading(false);
     }
   };
 
-  const handlePayment = async () => {
-    if (!bookingResult) return;
+  const handlePayment = useCallback(async (bookingIdParam?: string) => {
+    const bookingIdToUse = bookingIdParam || bookingResult?.bookingId;
+    if (!bookingIdToUse) return;
 
     setPaymentLoading(true);
 
@@ -232,9 +235,9 @@ export default function BookingModal({
       // Load Paystack script dynamically
       await loadPaystackScript();
 
-      // Initialize payment
+      // Initialize payment (GHS 100 deposit)
       const { data: paymentData } = await api.post("/payments/initialize", {
-        bookingId: bookingResult.bookingId,
+        bookingId: bookingIdToUse,
       });
 
       // Hide booking modal to allow interaction with Paystack popup
@@ -244,11 +247,11 @@ export default function BookingModal({
       const handler = window.PaystackPop.setup({
         key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || "",
         email: formData.email,
-        amount: paymentData.amount, // Amount from server in pesewas
+        amount: paymentData.amount, // GHS 100 = 10000 pesewas from server
         currency: "GHS",
         ref: paymentData.reference,
         metadata: {
-          booking_id: bookingResult.bookingId,
+          booking_id: bookingIdToUse,
           custom_fields: [
             {
               display_name: "Customer Name",
@@ -260,33 +263,43 @@ export default function BookingModal({
               variable_name: "service",
               value: service.name,
             },
+            {
+              display_name: "Payment Type",
+              variable_name: "payment_type",
+              value: "Deposit",
+            },
           ],
         },
         callback: async (response) => {
-          console.log("Payment successful:", response.reference);
+          // Show modal immediately with verifying state
+          setTempHideModal(false);
+          setStep("verifying");
 
           // Verify payment and update booking status
           try {
             await api.post("/payments/verify", {
               reference: response.reference,
-              bookingId: bookingResult.bookingId,
+              bookingId: bookingIdToUse,
             });
+
+            setPaymentComplete(true);
+            setBookingResult((prev) =>
+              prev ? { ...prev, reference: response.reference } : null
+            );
+            setStep("success");
+            setPaymentLoading(false);
+            toast.success("Payment successful! Your booking is confirmed.");
           } catch (verifyError) {
             console.error("Payment verification error:", verifyError);
+            setPaymentLoading(false);
+            setStep("confirm");
+            toast.error("Payment verification failed. Please contact support.");
           }
-
-          setPaymentComplete(true);
-          setBookingResult((prev) =>
-            prev ? { ...prev, reference: response.reference } : null
-          );
-          setPaymentLoading(false);
-          setTempHideModal(false);
-          toast.success("Payment successful! Your booking is confirmed.");
         },
         onClose: () => {
           setPaymentLoading(false);
           setTempHideModal(false);
-          toast.info("Payment window closed. You can try again.");
+          toast.warning("Payment cancelled. Please complete payment to confirm your booking.");
         },
       });
 
@@ -298,7 +311,7 @@ export default function BookingModal({
       setPaymentLoading(false);
       setTempHideModal(false);
     }
-  };
+  }, [bookingResult, formData.email, formData.name, service.name]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -354,15 +367,15 @@ export default function BookingModal({
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {step === "success"
-              ? paymentComplete
-                ? "Booking Confirmed!"
-                : "Complete Payment"
-              : `Book: ${service.name}`}
+              ? "Booking Confirmed!"
+              : step === "verifying"
+                ? "Processing Payment..."
+                : `Book: ${service.name}`}
           </DialogTitle>
         </DialogHeader>
 
         {/* Progress Steps */}
-        {step !== "success" && (
+        {step !== "success" && step !== "verifying" && (
           <div className="flex items-center justify-center gap-2 py-4">
             {["datetime", "details", "confirm"].map((s, i) => (
               <div key={s} className="flex items-center">
@@ -619,9 +632,28 @@ export default function BookingModal({
           </div>
         )}
 
-        {/* Step 3: Confirmation */}
+        {/* Step 3: Review & Pay Deposit */}
         {step === "confirm" && (
           <div className="space-y-6">
+            {/* Deposit Information */}
+            <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4">
+              <h3 className="font-semibold text-yellow-900 mb-2">Deposit Required</h3>
+              <p className="text-sm text-yellow-800">
+                A non-refundable deposit of <strong className="text-lg">GHS 100</strong> is required to confirm your appointment.
+              </p>
+              <p className="text-xs text-yellow-700 mt-2">
+                Per our{" "}
+                <Link
+                  href="/booking-policy"
+                  className="underline hover:text-yellow-900"
+                  target="_blank"
+                >
+                  booking policy
+                </Link>
+                , appointments without deposits will not be scheduled.
+              </p>
+            </div>
+
             <div className="bg-pink-50 rounded-lg p-4 space-y-3">
               <h3 className="font-semibold text-pink-900">Booking Summary</h3>
               <div className="space-y-2 text-sm">
@@ -642,6 +674,10 @@ export default function BookingModal({
                     {formData.time &&
                       format(new Date(`2000-01-01T${formData.time}`), "h:mm a")}
                   </span>
+                </div>
+                <div className="flex justify-between border-t pt-2 mt-2">
+                  <span className="text-gray-600">Deposit:</span>
+                  <span className="font-semibold text-pink-600">GHS 100.00</span>
                 </div>
               </div>
             </div>
@@ -665,7 +701,7 @@ export default function BookingModal({
             </div>
 
             <p className="text-xs text-gray-500 text-center">
-              By confirming, you agree to our{" "}
+              By continuing, you agree to our{" "}
               <Link
                 href="/booking-policy"
                 className="text-pink-600 underline hover:text-pink-700"
@@ -673,7 +709,7 @@ export default function BookingModal({
               >
                 booking policy
               </Link>
-              . A confirmation email will be sent to you.
+              . A confirmation email will be sent after payment.
             </p>
 
             <div className="flex gap-3">
@@ -682,41 +718,53 @@ export default function BookingModal({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || paymentLoading}
                 className="flex-1 bg-pink-600 hover:bg-pink-700"
               >
-                {loading ? (
+                {loading || paymentLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Booking...
+                    Processing...
                   </>
                 ) : (
-                  "Confirm Booking"
+                  <>
+                    <CreditCard className="w-4 h-4 mr-2" />
+                    Pay GHS 100 Deposit
+                  </>
                 )}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 4: Success / Payment */}
+        {/* Verifying Payment */}
+        {step === "verifying" && (
+          <div className="text-center space-y-6 py-8">
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto bg-pink-100">
+              <Loader2 className="w-8 h-8 text-pink-600 animate-spin" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Verifying Payment...
+              </h3>
+              <p className="text-sm text-gray-500 mt-2">
+                Please wait while we confirm your payment and send your
+                confirmation email. This will only take a moment.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Success (only after payment) */}
         {step === "success" && bookingResult && (
           <div className="text-center space-y-6 py-4">
-            <div
-              className={cn(
-                "w-16 h-16 rounded-full flex items-center justify-center mx-auto",
-                paymentComplete ? "bg-green-100" : "bg-pink-100"
-              )}
-            >
-              {paymentComplete ? (
-                <Check className="w-8 h-8 text-green-600" />
-              ) : (
-                <CreditCard className="w-8 h-8 text-pink-600" />
-              )}
+            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto bg-green-100">
+              <Check className="w-8 h-8 text-green-600" />
             </div>
 
             <div>
               <h3 className="text-lg font-semibold text-gray-900">
-                {paymentComplete ? "Booking Confirmed!" : "Booking Created!"}
+                Booking Confirmed!
               </h3>
               <p className="text-sm text-gray-600 mt-1">
                 Your booking reference:{" "}
@@ -726,49 +774,28 @@ export default function BookingModal({
               </p>
             </div>
 
-            {paymentComplete ? (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-800">
-                  Payment successful! Your appointment is confirmed. A
-                  confirmation email has been sent to {formData.email}.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  Please complete your payment to confirm your appointment.
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              {!paymentComplete && (
-                <Button
-                  onClick={handlePayment}
-                  disabled={paymentLoading}
-                  className="w-full bg-pink-600 hover:bg-pink-700"
-                >
-                  {paymentLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Pay Now
-                    </>
-                  )}
-                </Button>
-              )}
-              <Button
-                variant="outline"
-                onClick={handleClose}
-                className="w-full"
-              >
-                {paymentComplete ? "Close" : "Pay Later"}
-              </Button>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-sm text-green-800">
+                Payment successful! Your appointment is confirmed. A
+                confirmation email has been sent to {formData.email}.
+              </p>
             </div>
+
+            <div className="bg-pink-50 border border-pink-200 rounded-lg p-4">
+              <p className="text-sm text-pink-800">
+                <strong>Deposit Paid:</strong> GHS 100.00
+              </p>
+              <p className="text-xs text-pink-600 mt-1">
+                This non-refundable deposit secures your appointment.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleClose}
+              className="w-full bg-pink-600 hover:bg-pink-700"
+            >
+              Close
+            </Button>
           </div>
         )}
       </DialogContent>
