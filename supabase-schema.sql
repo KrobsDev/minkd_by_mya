@@ -79,6 +79,17 @@ CREATE TABLE blocked_dates (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Settings Table (key-value store for app configuration)
+CREATE TABLE settings (
+  key TEXT PRIMARY KEY,
+  value JSONB NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Default: Sunday (0) is blocked
+INSERT INTO settings (key, value) VALUES
+  ('blocked_weekdays', '[0]');
+
 -- Create indexes for better query performance
 CREATE INDEX idx_bookings_date ON bookings(appointment_date);
 CREATE INDEX idx_bookings_status ON bookings(status);
@@ -160,6 +171,7 @@ ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE blocked_dates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 
 -- Public read access for services and categories
 CREATE POLICY "Services are viewable by everyone" ON services FOR SELECT USING (true);
@@ -181,3 +193,5 @@ CREATE POLICY "Services manageable by service role" ON services FOR ALL USING (t
 CREATE POLICY "Categories manageable by service role" ON service_categories FOR ALL USING (true);
 CREATE POLICY "Availability manageable by service role" ON availability FOR ALL USING (true);
 CREATE POLICY "Blocked dates manageable by service role" ON blocked_dates FOR ALL USING (true);
+CREATE POLICY "Settings viewable by everyone" ON settings FOR SELECT USING (true);
+CREATE POLICY "Settings manageable by service role" ON settings FOR ALL USING (true);

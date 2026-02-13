@@ -17,6 +17,17 @@ import { toast } from "sonner";
 import { Plus, X, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import api from "@/lib/api/client";
+import { cn } from "@/lib/utils";
+
+const WEEKDAYS = [
+  { value: 0, label: "Sunday" },
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+];
 
 interface BlockedDate {
   id: string;
@@ -26,25 +37,60 @@ interface BlockedDate {
 
 export default function SettingsPage() {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
+  const [blockedWeekdays, setBlockedWeekdays] = useState<number[]>([0]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingDays, setSavingDays] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [blockReason, setBlockReason] = useState("");
 
-  const fetchBlockedDates = async () => {
+  const fetchData = async () => {
     try {
-      const { data } = await api.get<BlockedDate[]>("/admin/blocked-dates");
-      setBlockedDates(data);
+      const [datesRes, settingsRes] = await Promise.all([
+        api.get<BlockedDate[]>("/admin/blocked-dates"),
+        api.get<{ value: number[] | null }>("/admin/settings?key=blocked_weekdays"),
+      ]);
+      setBlockedDates(datesRes.data);
+      if (settingsRes.data.value) {
+        setBlockedWeekdays(settingsRes.data.value);
+      }
     } catch (error) {
-      console.error("Error fetching blocked dates:", error);
+      console.error("Error fetching settings:", error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchBlockedDates();
+    fetchData();
   }, []);
+
+  const toggleWeekday = async (day: number) => {
+    const updated = blockedWeekdays.includes(day)
+      ? blockedWeekdays.filter((d) => d !== day)
+      : [...blockedWeekdays, day];
+
+    setBlockedWeekdays(updated);
+    setSavingDays(true);
+
+    try {
+      await api.post("/admin/settings", {
+        key: "blocked_weekdays",
+        value: updated,
+      });
+      toast.success(
+        blockedWeekdays.includes(day)
+          ? `${WEEKDAYS[day].label} is now open for bookings`
+          : `${WEEKDAYS[day].label} is now blocked`
+      );
+    } catch {
+      // Revert on failure
+      setBlockedWeekdays(blockedWeekdays);
+      toast.error("Failed to update working days");
+    } finally {
+      setSavingDays(false);
+    }
+  };
 
   const handleBlockDate = async () => {
     if (!selectedDate) {
@@ -94,11 +140,47 @@ export default function SettingsPage() {
       <Tabs defaultValue="availability">
         <TabsList>
           <TabsTrigger value="availability">Availability</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
-          <TabsTrigger value="general">General</TabsTrigger>
+          <TabsTrigger value="account">Account</TabsTrigger>
         </TabsList>
 
         <TabsContent value="availability" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Working Days</CardTitle>
+              <CardDescription>
+                Toggle which days of the week you accept bookings
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {WEEKDAYS.map((day) => {
+                  const isBlocked = blockedWeekdays.includes(day.value);
+                  return (
+                    <button
+                      key={day.value}
+                      onClick={() => toggleWeekday(day.value)}
+                      disabled={savingDays}
+                      className={cn(
+                        "px-4 py-3 rounded-lg border text-sm font-medium transition-colors",
+                        isBlocked
+                          ? "bg-gray-100 text-gray-400 border-gray-200"
+                          : "bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100"
+                      )}
+                    >
+                      {day.label}
+                      <span className="block text-xs mt-1 font-normal">
+                        {isBlocked ? "Closed" : "Open"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-gray-500 mt-3">
+                Click a day to toggle it. Closed days cannot be booked by customers.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle>Block Dates</CardTitle>
@@ -202,174 +284,86 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Working Hours</CardTitle>
-              <CardDescription>
-                Set your default working hours for each day
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {[
-                  "Monday",
-                  "Tuesday",
-                  "Wednesday",
-                  "Thursday",
-                  "Friday",
-                  "Saturday",
-                ].map((day) => (
-                  <div
-                    key={day}
-                    className="flex items-center gap-4 pb-4 border-b last:border-0"
-                  >
-                    <div className="w-24 font-medium">{day}</div>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="time"
-                        defaultValue="09:00"
-                        className="w-32"
-                      />
-                      <span className="text-gray-500">to</span>
-                      <Input
-                        type="time"
-                        defaultValue="18:00"
-                        className="w-32"
-                      />
-                    </div>
-                  </div>
-                ))}
-                <div className="flex items-center gap-4">
-                  <div className="w-24 font-medium text-gray-400">Sunday</div>
-                  <span className="text-gray-400">Closed</span>
-                </div>
-              </div>
-              <Button className="mt-6 bg-pink-600 hover:bg-pink-700">
-                Save Working Hours
-              </Button>
-            </CardContent>
-          </Card>
         </TabsContent>
-
-        <TabsContent value="notifications" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Email Notifications</CardTitle>
-              <CardDescription>
-                Configure where booking notifications are sent
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="adminEmail">Admin Email</Label>
-                <Input
-                  id="adminEmail"
-                  type="email"
-                  defaultValue="admin@minkedbymya.com"
-                  className="mt-1"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Receive notifications for new bookings
-                </p>
-              </div>
-              <div>
-                <Label htmlFor="businessEmail">Business Email</Label>
-                <Input
-                  id="businessEmail"
-                  type="email"
-                  defaultValue="hello@minkedbymya.com"
-                  className="mt-1"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Used as the &quot;from&quot; address for customer emails
-                </p>
-              </div>
-              <Button className="bg-pink-600 hover:bg-pink-700">
-                Save Email Settings
-              </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="general" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Business Information</CardTitle>
-              <CardDescription>Update your business details</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="businessName">Business Name</Label>
-                <Input
-                  id="businessName"
-                  defaultValue="Mink'd by Mya"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="+233 XX XXX XXXX"
-                  className="mt-1"
-                />
-              </div>
-              <div>
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  defaultValue="Accra, Ghana"
-                  className="mt-1"
-                />
-              </div>
-              <Button className="bg-pink-600 hover:bg-pink-700">
-                Save Changes
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Integrations</CardTitle>
-              <CardDescription>
-                Manage external service connections
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">Supabase</p>
-                  <p className="text-sm text-gray-500">
-                    Database & Authentication
-                  </p>
-                </div>
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                  Connected
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">Paystack</p>
-                  <p className="text-sm text-gray-500">Payment Processing</p>
-                </div>
-                <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm">
-                  Connected via Links
-                </span>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">Resend</p>
-                  <p className="text-sm text-gray-500">Email Service</p>
-                </div>
-                <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">
-                  Configure in .env.local
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="account" className="space-y-6 mt-6">
+          <PasswordChangeCard />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+function PasswordChangeCard() {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleChangePassword = async () => {
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await api.post("/auth/change-password", { newPassword });
+      toast.success("Password updated successfully");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      toast.error("Failed to update password");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Change Password</CardTitle>
+        <CardDescription>Update your admin account password</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label htmlFor="newPassword">New Password</Label>
+          <Input
+            id="newPassword"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="mt-1"
+            placeholder="Minimum 8 characters"
+          />
+        </div>
+        <div>
+          <Label htmlFor="confirmPassword">Confirm New Password</Label>
+          <Input
+            id="confirmPassword"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+        <Button
+          onClick={handleChangePassword}
+          disabled={saving}
+          className="bg-pink-600 hover:bg-pink-700"
+        >
+          {saving ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Updating...
+            </>
+          ) : (
+            "Update Password"
+          )}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

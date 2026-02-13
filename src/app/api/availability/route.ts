@@ -24,6 +24,21 @@ export async function GET(request: Request) {
 
   // If specific date requested, get available slots for that date
   if (date) {
+    // Check if the weekday is blocked
+    const { data: weekdaySetting } = await supabase
+      .from("settings")
+      .select("value")
+      .eq("key", "blocked_weekdays")
+      .single();
+
+    if (weekdaySetting) {
+      const blockedWeekdays = weekdaySetting.value as number[];
+      const requestedDate = new Date(date + "T00:00:00");
+      if (blockedWeekdays.includes(requestedDate.getDay())) {
+        return NextResponse.json({ slots: [], blocked: true });
+      }
+    }
+
     // Check if date is blocked
     const { data: blockedDate } = await supabase
       .from("blocked_dates")

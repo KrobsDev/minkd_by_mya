@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Calendar,
   LayoutDashboard,
+  LogOut,
   Receipt,
   Scissors,
   Settings,
@@ -14,6 +15,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
 const navigation = [
@@ -26,7 +29,15 @@ const navigation = [
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleLogout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/admin/login");
+    router.refresh();
+  };
 
   return (
     <>
@@ -105,8 +116,8 @@ export default function AdminSidebar() {
             })}
           </nav>
 
-          {/* Back to site */}
-          <div className="p-4 border-t border-gray-200">
+          {/* Back to site & Logout */}
+          <div className="p-4 border-t border-gray-200 space-y-2">
             <Link
               href="/"
               className="flex items-center justify-center gap-2 px-4 py-2
@@ -115,6 +126,15 @@ export default function AdminSidebar() {
             >
               Back to Website
             </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 px-4 py-2 w-full
+                text-sm font-medium text-gray-600 hover:text-red-600
+                transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </button>
           </div>
         </div>
       </div>

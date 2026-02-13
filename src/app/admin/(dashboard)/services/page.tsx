@@ -16,6 +16,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +41,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import api from "@/lib/api/client";
 
 interface DbCategory {
@@ -71,6 +81,8 @@ export default function ServicesPage() {
   const [saving, setSaving] = useState(false);
   const [editingService, setEditingService] = useState<DbService | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deletingService, setDeletingService] = useState<DbService | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string>("");
 
   const [formData, setFormData] = useState<ServiceFormData>({
@@ -190,6 +202,23 @@ export default function ServicesPage() {
     setEditingService(null);
     resetForm();
     setIsDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingService) return;
+
+    setDeleting(true);
+    try {
+      await api.delete(`/services/${deletingService.id}`);
+      toast.success("Service deleted successfully");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting service:", error);
+      toast.error("Failed to delete service");
+    } finally {
+      setDeleting(false);
+      setDeletingService(null);
+    }
   };
 
   const filteredServices = services.filter(
@@ -462,13 +491,23 @@ export default function ServicesPage() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleEdit(service)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEdit(service)}
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeletingService(service)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -480,6 +519,41 @@ export default function ServicesPage() {
           </Tabs>
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!deletingService}
+        onOpenChange={(open) => !open && setDeletingService(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Service</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-semibold text-gray-900">
+                {deletingService?.name}
+              </span>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

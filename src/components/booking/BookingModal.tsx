@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { format, addDays, isBefore, startOfDay } from "date-fns";
 import {
   Calendar,
@@ -128,9 +128,22 @@ export default function BookingModal({
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [tempHideModal, setTempHideModal] = useState(false);
+  const [blockedWeekdays, setBlockedWeekdays] = useState<number[]>([0]);
 
   const today = startOfDay(new Date());
   const maxDate = addDays(today, 90);
+
+  // Fetch blocked weekdays when modal opens
+  useEffect(() => {
+    if (open) {
+      api
+        .get<{ value: number[] | null }>("/admin/settings?key=blocked_weekdays")
+        .then(({ data }) => {
+          if (data.value) setBlockedWeekdays(data.value);
+        })
+        .catch(() => {});
+    }
+  }, [open]);
 
   const handleDateSelect = async (date: Date) => {
     setFormData({ ...formData, date, time: "" });
@@ -331,7 +344,7 @@ export default function BookingModal({
 
   const isDateDisabled = (date: Date) => {
     return (
-      isBefore(date, today) || isBefore(maxDate, date) || date.getDay() === 0
+      isBefore(date, today) || isBefore(maxDate, date) || blockedWeekdays.includes(date.getDay())
     );
   };
 
