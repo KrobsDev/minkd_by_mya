@@ -19,14 +19,14 @@ export default function ValueSection() {
           className="font-bold text-4xl md:text-6xl
             font-(family-name:--font-dancing-script)"
         >
-          Lash services tailored to{" "}
+          Beauty services tailored to{" "}
           <span className="text-pink-500"> Your </span> natural look <br />
         </h2>
         <p className="leading-7">
-          Every set is customised to your eye shape, lifestyle, and desired
-          result. From subtle enhancements that feel effortless day to day to
-          fuller, more defined styles for a polished finish, each service is
-          planned to suit your features, comfort, and longevity.
+          Every service is customised to your facial features, lifestyle, and
+          desired result. From subtle enhancements that feel effortless day to
+          day to fuller, more defined styles for a polished finish, each service
+          is planned to suit your features, comfort, and longevity.
         </p>
 
         {/* cards */}
@@ -57,7 +57,10 @@ export default function ValueSection() {
           />
         </div>
         <Link href="/services">
-          <Button variant="outline" className="border-pink-300 hover:bg-pink-50 hover:border-pink-400">
+          <Button
+            variant="outline"
+            className="border-pink-300 hover:bg-pink-50 hover:border-pink-400"
+          >
             View Our Lash Styles
           </Button>
         </Link>

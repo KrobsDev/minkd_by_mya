@@ -19,12 +19,12 @@ export default function ServiceSection() {
             className="font-bold text-4xl md:text-6xl
               font-(family-name:--font-dancing-script)"
           >
-            Every lash look starts with the{" "}
+            Every beauty service starts with the{" "}
             <span className="text-pink-500"> right </span> choice.
           </h2>
           <p className="leading-7">
-            Every client's eyes, style, and routine are different. That's why
-            our services are grouped by result, not trend. Whether you want
+            Every client's features, style, and routine are different. That's
+            why our services are grouped by result, not trend. Whether you want
             something soft and natural or bold and defined, each category
             reflects a specific look, technique, and level of maintenance so you
             can choose confidently.

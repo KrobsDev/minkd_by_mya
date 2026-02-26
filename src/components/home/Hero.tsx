@@ -34,12 +34,13 @@ export default function Hero() {
                 text-white md:leading-28
                 font-(family-name:--font-dancing-script)"
             >
-              Flawless, <span className="text-pink-500">Long-Lasting</span> Lash
-              Extensions in Accra
+              Flawless, <span className="text-pink-500">Personalized</span> Beauty
+              Services in Accra
             </h1>
             <p className="leading-7 md:max-w-[40%] text-white">
-              Wake up every day with perfectly styled lashes — customized,
-              comfortable, and applied by a certified lash artist.
+              Wake up every day with perfectly crafted beauty enhancements —
+              customized, comfortable, and delivered by certified beauty
+              professionals.
             </p>
           </div>
           <div
