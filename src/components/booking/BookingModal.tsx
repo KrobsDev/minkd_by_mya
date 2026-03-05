@@ -74,7 +74,7 @@ const loadPaystackScript = (): Promise<void> => {
 };
 
 interface BookingModalProps {
-  service: Service;
+  services: Service[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -103,10 +103,11 @@ const TIME_SLOTS = [
 ];
 
 export default function BookingModal({
-  service,
+  services,
   open,
   onOpenChange,
 }: BookingModalProps) {
+  const primaryService = services[0];
   const [step, setStep] = useState<BookingStep>("datetime");
   const [loading, setLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -199,7 +200,8 @@ export default function BookingModal({
     try {
       // Create the booking with pending status
       const { data: result } = await api.post("/bookings", {
-        serviceId: service.id,
+        serviceId: primaryService.id,
+        additionalServiceIds: services.slice(1).map((s) => s.id),
         customerName: formData.name,
         customerEmail: formData.email,
         customerPhone: formData.phone,
@@ -261,7 +263,7 @@ export default function BookingModal({
             {
               display_name: "Service",
               variable_name: "service",
-              value: service.name,
+              value: services.map((s) => s.name).join(", "),
             },
             {
               display_name: "Payment Type",
@@ -311,7 +313,7 @@ export default function BookingModal({
       setPaymentLoading(false);
       setTempHideModal(false);
     }
-  }, [bookingResult, formData.email, formData.name, service.name]);
+  }, [bookingResult, formData.email, formData.name, services]);
 
   const handleClose = () => {
     onOpenChange(false);
@@ -370,7 +372,9 @@ export default function BookingModal({
               ? "Booking Confirmed!"
               : step === "verifying"
                 ? "Processing Payment..."
-                : `Book: ${service.name}`}
+                : services.length === 1
+                  ? `Book: ${primaryService.name}`
+                  : `Book ${services.length} Services`}
           </DialogTitle>
         </DialogHeader>
 
@@ -657,10 +661,12 @@ export default function BookingModal({
             <div className="bg-pink-50 rounded-lg p-4 space-y-3">
               <h3 className="font-semibold text-pink-900">Booking Summary</h3>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Service:</span>
-                  <span className="font-medium">{service.name}</span>
-                </div>
+                {services.map((s) => (
+                  <div key={s.id} className="flex justify-between">
+                    <span className="text-gray-600">{s.name}</span>
+                    <span className="font-medium">GHS {s.price}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Date:</span>
                   <span className="font-medium">

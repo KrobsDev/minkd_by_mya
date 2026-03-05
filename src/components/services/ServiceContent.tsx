@@ -44,7 +44,7 @@ export default function ServiceContent() {
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [activeTab, setActiveTab] = useState<string>("");
-  const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [bookingOpen, setBookingOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -75,9 +75,16 @@ export default function ServiceContent() {
     fetchData();
   }, []);
 
-  const handleBookService = (service: Service) => {
-    setSelectedService(service);
-    setBookingOpen(true);
+  const toggleServiceSelection = (service: Service) => {
+    setSelectedServices((prev) =>
+      prev.some((s) => s.id === service.id)
+        ? prev.filter((s) => s.id !== service.id)
+        : [...prev, service]
+    );
+  };
+
+  const handleBookSelected = () => {
+    if (selectedServices.length > 0) setBookingOpen(true);
   };
 
   if (loading) {
@@ -127,71 +134,113 @@ export default function ServiceContent() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
         {services
           .filter((service) => service.categoryId === activeTab)
-          .map((service) => (
-            <div
-              key={service.id}
-              className={cn(
-                `shadow-lg p-6 rounded-xl bg-white relative flex flex-col gap-4
-                justify-between hover:shadow-xl transition-all`,
-                service.popular
-                  ? "border-2 border-pink-500"
-                  : "border border-gray-100",
-              )}
-            >
-              {service.popular && (
-                <div
-                  className="px-4 py-1 absolute top-0 right-0 bg-pink-600
-                    rounded-tr-xl rounded-bl-xl"
-                >
-                  <p className="text-xs font-semibold text-white">Popular</p>
-                </div>
-              )}
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {service.name}
-                  </h3>
-                  <div className="flex items-center justify-between">
-                    <p className="text-2xl font-bold text-pink-600">
-                      GHS {service.price}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {service.durationMinutes} mins
+          .map((service) => {
+            const isSelected = selectedServices.some((s) => s.id === service.id);
+            return (
+              <div
+                key={service.id}
+                className={cn(
+                  `shadow-lg p-6 rounded-xl bg-white relative flex flex-col gap-4
+                  justify-between hover:shadow-xl transition-all`,
+                  isSelected
+                    ? "border-2 border-pink-600 ring-2 ring-pink-100"
+                    : service.popular
+                      ? "border-2 border-pink-500"
+                      : "border border-gray-100",
+                )}
+              >
+                {service.popular && !isSelected && (
+                  <div
+                    className="px-4 py-1 absolute top-0 right-0 bg-pink-600
+                      rounded-tr-xl rounded-bl-xl"
+                  >
+                    <p className="text-xs font-semibold text-white">Popular</p>
+                  </div>
+                )}
+                {isSelected && (
+                  <div
+                    className="px-3 py-1 absolute top-0 right-0 bg-pink-600
+                      rounded-tr-xl rounded-bl-xl flex items-center gap-1"
+                  >
+                    <Check size={12} className="text-white" />
+                    <p className="text-xs font-semibold text-white">Selected</p>
+                  </div>
+                )}
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {service.name}
+                    </h3>
+                    <div className="flex items-center justify-between">
+                      <p className="text-2xl font-bold text-pink-600">
+                        GHS {service.price}
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {service.durationMinutes} mins
+                      </p>
+                    </div>
+                    <p className="text-sm leading-6 text-gray-600">
+                      {service.description}
                     </p>
                   </div>
-                  <p className="text-sm leading-6 text-gray-600">
-                    {service.description}
-                  </p>
+                  <div className="flex flex-col gap-2 pt-2">
+                    {service.features.map((feature, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <Check
+                          size={16}
+                          className="text-pink-600 mt-0.5 shrink-0"
+                        />
+                        <p className="text-sm text-gray-600">{feature}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 pt-2">
-                  {service.features.map((feature, idx) => (
-                    <div key={idx} className="flex items-start gap-2">
-                      <Check
-                        size={16}
-                        className="text-pink-600 mt-0.5 shrink-0"
-                      />
-                      <p className="text-sm text-gray-600">{feature}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              <Button
-                onClick={() => handleBookService(service)}
-                className="w-full bg-pink-600 hover:bg-pink-700 text-white"
-              >
-                Book Now
-              </Button>
-            </div>
-          ))}
+                <Button
+                  onClick={() => toggleServiceSelection(service)}
+                  variant={isSelected ? "outline" : "default"}
+                  className={cn(
+                    "w-full",
+                    isSelected
+                      ? "border-pink-400 text-pink-700 hover:bg-pink-50"
+                      : "bg-pink-600 hover:bg-pink-700 text-white",
+                  )}
+                >
+                  {isSelected ? "Remove" : "Add to Booking"}
+                </Button>
+              </div>
+            );
+          })}
       </div>
 
+      {/* Sticky booking bar */}
+      {selectedServices.length > 0 && (
+        <div className="sticky bottom-6 mt-6 flex justify-center">
+          <div className="bg-pink-600 text-white rounded-full shadow-lg px-6 py-3 flex items-center gap-4">
+            <span className="text-sm font-medium">
+              {selectedServices.length} service{selectedServices.length > 1 ? "s" : ""} selected &mdash; GHS{" "}
+              {selectedServices.reduce((sum, s) => sum + s.price, 0)}
+            </span>
+            <Button
+              onClick={handleBookSelected}
+              variant="outline"
+              className="border-white text-pink-600 bg-white hover:bg-pink-50 rounded-full px-4 py-1 h-auto text-sm font-semibold"
+            >
+              Book Now
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Booking Modal */}
-      {selectedService && (
+      {selectedServices.length > 0 && (
         <BookingModal
-          service={selectedService}
+          services={selectedServices}
           open={bookingOpen}
-          onOpenChange={setBookingOpen}
+          onOpenChange={(open) => {
+            setBookingOpen(open);
+            if (!open) setSelectedServices([]);
+          }}
         />
       )}
     </>

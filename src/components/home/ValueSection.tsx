@@ -24,9 +24,9 @@ export default function ValueSection() {
         </h2>
         <p className="leading-7">
           Every service is customised to your facial features, lifestyle, and
-          desired result. From subtle enhancements that feel effortless day to
-          day to fuller, more defined styles for a polished finish, each service
-          is planned to suit your features, comfort, and longevity.
+          desired result. From subtle enhancements that feel effortless, to
+          fuller, more defined styles for a polished finish, each service is
+          planned to suit your features, comfort, and longevity.
         </p>
 
         {/* cards */}
