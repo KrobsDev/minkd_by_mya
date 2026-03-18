@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import type { BlockedDateInsert } from "@/types/database";
+import type { Database } from "@/types/database";
+
+type BlockedDateInsert = Database["public"]["Tables"]["blocked_dates"]["Insert"];
 
 export async function GET() {
   const supabase = await createServiceClient();
