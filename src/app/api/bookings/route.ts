@@ -106,7 +106,8 @@ export async function POST(request: Request) {
     }
 
     // Link all services in the junction table
-    const { error: servicesError } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: servicesError } = await (supabase as any)
       .from("booking_services")
       .insert(allServiceIds.map((sid) => ({ booking_id: booking.id, service_id: sid })));
 
