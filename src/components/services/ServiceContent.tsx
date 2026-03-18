@@ -176,7 +176,11 @@ export default function ServiceContent() {
                         GHS {service.price}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {service.durationMinutes} mins
+                        {service.durationMinutes < 60
+                          ? `${service.durationMinutes} mins`
+                          : service.durationMinutes % 60 === 0
+                            ? `${service.durationMinutes / 60} hr${service.durationMinutes / 60 > 1 ? "s" : ""}`
+                            : `${Math.floor(service.durationMinutes / 60)} hr ${service.durationMinutes % 60} mins`}
                       </p>
                     </div>
                     <p className="text-sm leading-6 text-gray-600">

@@ -22,9 +22,9 @@ export function getCustomerConfirmationEmail(data: BookingEmailData): string {
         <table role="presentation" style="width: 600px; border-collapse: collapse; background-color: white; border-radius: 16px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           <!-- Header -->
           <tr>
-            <td style="padding: 40px 40px 20px; text-align: center; border-bottom: 1px solid #FCE7F3;">
-              <h1 style="margin: 0; font-size: 28px; color: #BE185D; font-family: 'Georgia', serif;">Mink'd by Mya</h1>
-              <p style="margin: 8px 0 0; color: #9D174D; font-size: 14px;">Lash & Beauty Studio</p>
+            <td style="padding: 32px 40px 20px; text-align: center; border-bottom: 1px solid #FCE7F3;">
+              <img src="https://www.minkdbymya.com/images/logo.PNG" alt="Mink'd by Mya" width="120" style="display: block; margin: 0 auto 8px; height: auto;" />
+              <p style="margin: 0; color: #9D174D; font-size: 14px;">Lash & Beauty Studio</p>
             </td>
           </tr>
 
@@ -86,9 +86,21 @@ export function getCustomerConfirmationEmail(data: BookingEmailData): string {
           <!-- Footer -->
           <tr>
             <td style="padding: 30px 40px; background-color: #FDF2F8; border-radius: 0 0 16px 16px; text-align: center;">
-              <p style="margin: 0 0 10px; color: #BE185D; font-size: 14px;">
-                Follow us on Instagram @minkedbymya
-              </p>
+              <p style="margin: 0 0 16px; color: #9D174D; font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Follow Us</p>
+              <table role="presentation" style="margin: 0 auto 20px;">
+                <tr>
+                  <td style="padding: 0 8px;">
+                    <a href="https://www.instagram.com/_minkdbymya" target="_blank" style="display: inline-block; background-color: #BE185D; color: white; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 20px;">
+                      Instagram
+                    </a>
+                  </td>
+                  <td style="padding: 0 8px;">
+                    <a href="https://vm.tiktok.com/ZGdmTbcC4" target="_blank" style="display: inline-block; background-color: #1F2937; color: white; text-decoration: none; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 20px;">
+                      TikTok
+                    </a>
+                  </td>
+                </tr>
+              </table>
               <p style="margin: 0; color: #9CA3AF; font-size: 12px;">
                 &copy; ${new Date().getFullYear()} Mink'd by Mya. All rights reserved.
               </p>

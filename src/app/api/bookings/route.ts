@@ -9,10 +9,13 @@ export async function GET() {
     .select(
       `
       *,
-      services:service_id (
-        name,
-        price,
-        duration_minutes
+      booking_services (
+        service_id,
+        services:service_id (
+          name,
+          price,
+          duration_minutes
+        )
       )
     `,
     )
@@ -30,6 +33,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const {
       serviceId,
+      additionalServiceIds = [],
       customerName,
       customerEmail,
       customerPhone,
@@ -38,39 +42,24 @@ export async function POST(request: Request) {
       notes,
     } = body;
 
-    // Validate required fields
-    if (
-      !serviceId ||
-      !customerName ||
-      !customerEmail ||
-      !customerPhone ||
-      !appointmentDate ||
-      !appointmentTime
-    ) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 },
-      );
+    if (!serviceId || !customerName || !customerEmail || !customerPhone || !appointmentDate || !appointmentTime) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const supabase = await createClient();
+    const allServiceIds: string[] = [serviceId, ...additionalServiceIds];
 
-    // Get service details
-    const { data: service, error: serviceError } = await supabase
+    // Validate all services exist
+    const { data: services, error: serviceError } = await supabase
       .from("services")
       .select("*")
-      .eq("id", serviceId)
-      .single();
+      .in("id", allServiceIds);
 
-    if (serviceError || !service) {
-      console.log({ service, serviceError });
-      return NextResponse.json(
-        { error: "Service not founds" },
-        { status: 404 },
-      );
+    if (serviceError || !services || services.length === 0) {
+      return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
 
-    // Check if the time slot is available
+    // One appointment per slot
     const { data: existingBooking } = await supabase
       .from("bookings")
       .select("id")
@@ -80,10 +69,7 @@ export async function POST(request: Request) {
       .single();
 
     if (existingBooking) {
-      return NextResponse.json(
-        { error: "This time slot is no longer available" },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "This time slot is no longer available" }, { status: 409 });
     }
 
     // Check if date is blocked
@@ -94,13 +80,10 @@ export async function POST(request: Request) {
       .single();
 
     if (blockedDate) {
-      return NextResponse.json(
-        { error: "This date is not available for bookings" },
-        { status: 409 },
-      );
+      return NextResponse.json({ error: "This date is not available for bookings" }, { status: 409 });
     }
 
-    // Create booking
+    // Create one booking row
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
@@ -117,25 +100,25 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (bookingError) {
+    if (bookingError || !booking) {
       console.error("Booking error:", bookingError);
-      return NextResponse.json(
-        { error: "Failed to create booking" },
-        { status: 500 },
-      );
+      return NextResponse.json({ error: "Failed to create booking" }, { status: 500 });
     }
 
-    // Emails will be sent after payment verification, not at booking creation
+    // Link all services in the junction table
+    const { error: servicesError } = await supabase
+      .from("booking_services")
+      .insert(allServiceIds.map((sid) => ({ booking_id: booking.id, service_id: sid })));
 
-    return NextResponse.json({
-      booking,
-      paystackLink: service.paystack_link,
-    });
+    if (servicesError) {
+      console.error("Failed to insert booking_services:", servicesError);
+    }
+
+    const primaryService = services.find((s) => s.id === serviceId) ?? services[0];
+
+    return NextResponse.json({ booking, paystackLink: primaryService.paystack_link });
   } catch (error) {
     console.error("Booking API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
