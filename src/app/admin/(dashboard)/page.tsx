@@ -19,7 +19,9 @@ interface Booking {
   appointment_time: string;
   status: string;
   payment_status: string;
-  services: { name: string; price: number } | null;
+  booking_services: {
+    services: { name: string; price: number } | null;
+  }[];
 }
 
 export default function AdminDashboard() {
@@ -45,7 +47,15 @@ export default function AdminDashboard() {
             .length,
           totalRevenue: bookings
             .filter((b) => b.payment_status === "paid")
-            .reduce((sum, b) => sum + (b.services?.price || 0), 0),
+            .reduce(
+              (sum, b) =>
+                sum +
+                b.booking_services.reduce(
+                  (s, bs) => s + (bs.services?.price ?? 0),
+                  0
+                ),
+              0
+            ),
         });
 
         setRecentBookings(bookings.slice(0, 5));
@@ -142,7 +152,9 @@ export default function AdminDashboard() {
                   <div>
                     <p className="font-medium">{booking.customer_name}</p>
                     <p className="text-sm text-gray-600">
-                      {booking.services?.name || "Unknown Service"}
+                      {booking.booking_services?.length > 0
+                        ? booking.booking_services.map((bs) => bs.services?.name).filter(Boolean).join(", ")
+                        : "No services"}
                     </p>
                   </div>
                   <div className="text-right">

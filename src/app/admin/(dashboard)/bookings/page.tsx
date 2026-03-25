@@ -25,6 +25,15 @@ import { toast } from "sonner";
 import { Search, RefreshCw } from "lucide-react";
 import api from "@/lib/api/client";
 
+interface BookingService {
+  service_id: string;
+  services: {
+    name: string;
+    price: number;
+    duration_minutes: number;
+  } | null;
+}
+
 interface Booking {
   id: string;
   customer_name: string;
@@ -36,11 +45,7 @@ interface Booking {
   payment_status: "pending" | "paid" | "failed" | "refunded";
   notes: string | null;
   created_at: string;
-  services: {
-    name: string;
-    price: number;
-    duration_minutes: number;
-  } | null;
+  booking_services: BookingService[];
 }
 
 export default function BookingsPage() {
@@ -205,15 +210,21 @@ export default function BookingsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {booking.services?.name || "Unknown"}
-                          </p>
-                          {booking.services && (
-                            <p className="text-sm text-gray-500">
-                              GHS {booking.services.price} -{" "}
-                              {booking.services.duration_minutes} min
-                            </p>
+                        <div className="flex flex-col gap-0.5">
+                          {booking.booking_services?.length > 0 ? (
+                            <>
+                              {booking.booking_services.map((bs, i) => (
+                                <p key={i} className="font-medium text-sm">
+                                  {bs.services?.name ?? "—"}
+                                </p>
+                              ))}
+                              <p className="text-sm text-gray-500">
+                                GHS {booking.booking_services.reduce((sum, bs) => sum + (bs.services?.price ?? 0), 0)}{" "}
+                                · {booking.booking_services.reduce((sum, bs) => sum + (bs.services?.duration_minutes ?? 0), 0)} min
+                              </p>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-400">No services</p>
                           )}
                         </div>
                       </TableCell>

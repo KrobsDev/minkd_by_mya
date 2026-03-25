@@ -187,6 +187,7 @@ export type Database = {
           duration_minutes: number
           features: string[]
           id: string
+          image_url: string | null
           name: string
           paystack_link: string
           popular: boolean | null
@@ -201,6 +202,7 @@ export type Database = {
           duration_minutes?: number
           features?: string[]
           id: string
+          image_url?: string | null
           name: string
           paystack_link: string
           popular?: boolean | null
@@ -215,6 +217,7 @@ export type Database = {
           duration_minutes?: number
           features?: string[]
           id?: string
+          image_url?: string | null
           name?: string
           paystack_link?: string
           popular?: boolean | null

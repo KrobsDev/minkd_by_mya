@@ -8,4 +8,5 @@ export interface Service {
   categoryId: string;
   price: number;
   durationMinutes: number;
+  imageUrl?: string | null;
 }

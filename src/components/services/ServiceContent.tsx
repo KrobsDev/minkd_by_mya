@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { Check, Loader2 } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import BookingModal from "@/components/booking/BookingModal";
 import type { Service } from "@/lib/models/service";
@@ -24,6 +25,7 @@ interface DbService {
   paystack_link: string;
   popular: boolean;
   active: boolean;
+  image_url: string | null;
 }
 
 function mapDbServiceToService(dbService: DbService): Service {
@@ -37,6 +39,7 @@ function mapDbServiceToService(dbService: DbService): Service {
     popular: dbService.popular,
     price: dbService.price,
     durationMinutes: dbService.duration_minutes,
+    imageUrl: dbService.image_url,
   };
 }
 
@@ -164,6 +167,17 @@ export default function ServiceContent() {
                   >
                     <Check size={12} className="text-white" />
                     <p className="text-xs font-semibold text-white">Selected</p>
+                  </div>
+                )}
+                {service.imageUrl && (
+                  <div className="relative h-44 -mx-6 -mt-6 mb-0 overflow-hidden rounded-t-xl">
+                    <Image
+                      src={service.imageUrl}
+                      alt={service.name}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
                   </div>
                 )}
                 <div className="flex flex-col gap-3">

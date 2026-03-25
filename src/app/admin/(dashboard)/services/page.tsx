@@ -41,7 +41,8 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Pencil, Trash2, ExternalLink, Loader2, RefreshCw, ImageIcon, X } from "lucide-react";
+import Image from "next/image";
 import api from "@/lib/api/client";
 
 interface DbCategory {
@@ -61,6 +62,7 @@ interface DbService {
   paystack_link: string;
   popular: boolean;
   active: boolean;
+  image_url: string | null;
 }
 
 interface ServiceFormData {
@@ -72,6 +74,7 @@ interface ServiceFormData {
   category_id: string;
   paystack_link: string;
   popular: boolean;
+  image_url: string | null;
 }
 
 export default function ServicesPage() {
@@ -79,6 +82,7 @@ export default function ServicesPage() {
   const [categories, setCategories] = useState<DbCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [editingService, setEditingService] = useState<DbService | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [deletingService, setDeletingService] = useState<DbService | null>(null);
@@ -94,6 +98,7 @@ export default function ServicesPage() {
     category_id: "",
     paystack_link: "",
     popular: false,
+    image_url: null,
   });
 
   const fetchData = async () => {
@@ -133,8 +138,34 @@ export default function ServicesPage() {
       category_id: service.category_id,
       paystack_link: service.paystack_link,
       popular: service.popular,
+      image_url: service.image_url,
     });
     setIsDialogOpen(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+      const res = await fetch("/api/services/upload-image", {
+        method: "POST",
+        body: uploadFormData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setFormData((prev) => ({ ...prev, image_url: data.url }));
+      toast.success("Image uploaded");
+    } catch (error) {
+      console.error("Image upload failed:", error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+      e.target.value = "";
+    }
   };
 
   const handleSave = async () => {
@@ -156,6 +187,7 @@ export default function ServicesPage() {
           category_id: formData.category_id,
           paystack_link: formData.paystack_link,
           popular: formData.popular,
+          image_url: formData.image_url,
         });
         toast.success("Service updated successfully");
       } else {
@@ -169,6 +201,7 @@ export default function ServicesPage() {
           category_id: formData.category_id,
           paystack_link: formData.paystack_link,
           popular: formData.popular,
+          image_url: formData.image_url,
         });
         toast.success("Service added successfully");
       }
@@ -195,6 +228,7 @@ export default function ServicesPage() {
       category_id: "",
       paystack_link: "",
       popular: false,
+      image_url: null,
     });
   };
 
@@ -382,6 +416,46 @@ export default function ServicesPage() {
                   <Label htmlFor="popular" className="text-sm font-normal">
                     Mark as Popular
                   </Label>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Service Image</Label>
+                  {formData.image_url ? (
+                    <div className="relative w-full h-40 rounded-lg overflow-hidden border border-gray-200">
+                      <Image
+                        src={formData.image_url}
+                        alt="Service preview"
+                        fill
+                        className="object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setFormData((prev) => ({ ...prev, image_url: null }))}
+                        className="absolute top-2 right-2 bg-white rounded-full p-1 shadow hover:bg-gray-100"
+                      >
+                        <X className="h-4 w-4 text-gray-600" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-pink-400 hover:bg-pink-50 transition-colors">
+                      {uploadingImage ? (
+                        <Loader2 className="h-6 w-6 animate-spin text-pink-600" />
+                      ) : (
+                        <>
+                          <ImageIcon className="h-8 w-8 text-gray-400 mb-2" />
+                          <span className="text-sm text-gray-500">Click to upload image</span>
+                          <span className="text-xs text-gray-400">JPEG, PNG, WebP, GIF</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={uploadingImage}
+                      />
+                    </label>
+                  )}
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
