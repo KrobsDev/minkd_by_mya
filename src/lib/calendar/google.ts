@@ -16,8 +16,15 @@ export async function createCalendarEvent(
   params: CreateCalendarEventParams
 ): Promise<{ success: boolean; eventId?: string; error?: string }> {
   const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
   const calendarId = process.env.GOOGLE_CALENDAR_ID;
+
+  // Vercel sometimes stores the key with literal \n sequences, sometimes with
+  // real newlines, and sometimes with surrounding quotes — handle all cases.
+  const rawKey = process.env.GOOGLE_PRIVATE_KEY ?? "";
+  const privateKey = rawKey
+    .replace(/^"+|"+$/g, "")   // strip any surrounding quotes Vercel may add
+    .replace(/\\n/g, "\n")     // convert literal \n sequences to real newlines
+    .trim();
 
   if (!serviceAccountEmail || !privateKey || !calendarId) {
     return { success: false, error: "Google Calendar not configured" };
