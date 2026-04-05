@@ -32,8 +32,14 @@ export async function createCalendarEvent(
 
     const calendar = google.calendar({ version: "v3", auth });
 
-    // Build start datetime — appointment is in Africa/Accra timezone (GMT+0)
-    const startDateTime = new Date(`${params.appointmentDate}T${params.appointmentTime}`);
+    // Africa/Accra is always UTC+0 (no daylight saving).
+    // Append "+00:00" so the Date constructor interprets the time as UTC
+    // regardless of the server's local timezone.
+    const isoString = `${params.appointmentDate}T${params.appointmentTime}+00:00`;
+    const startDateTime = new Date(isoString);
+    if (isNaN(startDateTime.getTime())) {
+      return { success: false, error: `Invalid date/time: ${isoString}` };
+    }
     const endDateTime = new Date(startDateTime.getTime() + (params.durationMinutes ?? 60) * 60 * 1000);
 
     const event = await calendar.events.insert({

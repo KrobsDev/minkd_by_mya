@@ -81,6 +81,8 @@ export async function POST(request: Request) {
     console.error("Error updating bookings:", bookingError);
   }
 
+  let calendarStatus: { ok: boolean; eventId?: string | null; error?: string } | null = null;
+
   if (updatedBookings && updatedBookings.length > 0) {
     const first = updatedBookings[0];
     type BookingService = { services: { name: string; duration_minutes: number } | null };
@@ -99,15 +101,28 @@ export async function POST(request: Request) {
     const formattedTime = format(new Date(`2000-01-01T${first.appointment_time}`), "h:mm a");
     const bookingReference = first.id.slice(0, 8).toUpperCase();
 
-    const emailResult = await sendBookingConfirmationEmails({
-      customerName: first.customer_name,
-      customerEmail: first.customer_email,
-      customerPhone: first.customer_phone,
-      serviceName: serviceNames,
-      appointmentDate: formattedDate,
-      appointmentTime: formattedTime,
-      bookingReference,
-    });
+    const [emailResult, calendarResult] = await Promise.all([
+      sendBookingConfirmationEmails({
+        customerName: first.customer_name,
+        customerEmail: first.customer_email,
+        customerPhone: first.customer_phone,
+        serviceName: serviceNames,
+        appointmentDate: formattedDate,
+        appointmentTime: formattedTime,
+        bookingReference,
+      }),
+      createCalendarEvent({
+        customerName: first.customer_name,
+        customerEmail: first.customer_email,
+        customerPhone: first.customer_phone,
+        serviceName: serviceNames,
+        appointmentDate: first.appointment_date,
+        appointmentTime: first.appointment_time,
+        bookingReference,
+        durationMinutes: totalDurationMinutes,
+        notes: first.notes ?? undefined,
+      }),
+    ]);
 
     if (emailResult.skipped) {
       console.warn("⚠️  Emails skipped:", emailResult.error);
@@ -117,23 +132,15 @@ export async function POST(request: Request) {
       console.log("✅ Emails sent after payment verification");
     }
 
-    const calendarResult = await createCalendarEvent({
-      customerName: first.customer_name,
-      customerEmail: first.customer_email,
-      customerPhone: first.customer_phone,
-      serviceName: serviceNames,
-      appointmentDate: first.appointment_date,
-      appointmentTime: first.appointment_time,
-      bookingReference,
-      durationMinutes: totalDurationMinutes,
-      notes: first.notes ?? undefined,
-    });
-
     if (!calendarResult.success) {
       console.error("❌ Google Calendar event failed:", calendarResult.error);
     } else {
       console.log("✅ Google Calendar event created:", calendarResult.eventId);
     }
+
+    calendarStatus = calendarResult.success
+      ? { ok: true, eventId: calendarResult.eventId }
+      : { ok: false, error: calendarResult.error };
   }
 
   // Record transaction
@@ -161,5 +168,6 @@ export async function POST(request: Request) {
     verified: true,
     amount: paymentData.amount / 100,
     currency: paymentData.currency,
+    calendarStatus,
   });
 }
