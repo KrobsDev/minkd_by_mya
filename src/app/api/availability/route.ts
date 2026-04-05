@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { addDays, format, parse, startOfDay, isBefore } from "date-fns";
+import { addDays, format, parse, startOfDay } from "date-fns";
+import {
+  DEFAULT_MAX_BOOKINGS_PER_SLOT,
+  DEFAULT_CLOSING_TIME_MINUTES,
+} from "@/lib/booking-constants";
 
 // Default time slots if none are set in the database
 const DEFAULT_TIME_SLOTS = [
@@ -50,6 +54,24 @@ export async function GET(request: Request) {
       return NextResponse.json({ slots: [], blocked: true });
     }
 
+    // Fetch admin-configurable settings in parallel
+    const [{ data: closingTimeSetting }, { data: maxBookingsSetting }] =
+      await Promise.all([
+        supabase.from("settings").select("value").eq("key", "closing_time").single(),
+        supabase.from("settings").select("value").eq("key", "max_bookings_per_slot").single(),
+      ]);
+
+    let closingTimeMinutes = DEFAULT_CLOSING_TIME_MINUTES;
+    if (closingTimeSetting?.value) {
+      const [h, m] = (closingTimeSetting.value as string).split(":").map(Number);
+      closingTimeMinutes = h * 60 + (m || 0);
+    }
+
+    const maxBookingsPerSlot =
+      typeof maxBookingsSetting?.value === "number"
+        ? maxBookingsSetting.value
+        : DEFAULT_MAX_BOOKINGS_PER_SLOT;
+
     // Get custom availability for this date
     const { data: availability } = await supabase
       .from("availability")
@@ -57,23 +79,36 @@ export async function GET(request: Request) {
       .eq("date", date)
       .eq("is_available", true);
 
-    // Get existing bookings for this date
+    // Get existing bookings for this date, including ALL services per booking
+    // so we can accurately compute each booking's total occupied duration.
     const { data: bookings } = await supabase
       .from("bookings")
-      .select("appointment_time, services:service_id(duration_minutes)")
+      .select(
+        "appointment_time, booking_services(services:service_id(duration_minutes))"
+      )
       .eq("appointment_date", date)
       .neq("status", "cancelled");
 
-    // Calculate booked time ranges
+    // Build accurate time ranges using total multi-service duration per booking
     const bookedRanges: { start: number; end: number }[] = (bookings || []).map(
       (b) => {
         const startTime = parse(b.appointment_time, "HH:mm:ss", new Date());
-        const duration = (b.services as { duration_minutes: number })?.duration_minutes || 60;
-        return {
-          start: startTime.getHours() * 60 + startTime.getMinutes(),
-          end:
-            startTime.getHours() * 60 + startTime.getMinutes() + duration,
-        };
+        const startMinutes =
+          startTime.getHours() * 60 + startTime.getMinutes();
+
+        // Sum durations of all services in this booking
+        const bookingServices = b.booking_services as {
+          services: { duration_minutes: number } | null;
+        }[];
+        const totalDuration =
+          bookingServices && bookingServices.length > 0
+            ? bookingServices.reduce(
+                (sum, bs) => sum + (bs.services?.duration_minutes ?? 60),
+                0
+              )
+            : 60;
+
+        return { start: startMinutes, end: startMinutes + totalDuration };
       }
     );
 
@@ -81,7 +116,6 @@ export async function GET(request: Request) {
     let timeSlots = DEFAULT_TIME_SLOTS;
 
     if (availability && availability.length > 0) {
-      // Generate slots from availability ranges
       timeSlots = [];
       for (const slot of availability) {
         const startHour = parseInt(slot.start_time.split(":")[0], 10);
@@ -92,19 +126,26 @@ export async function GET(request: Request) {
       }
     }
 
-    // Filter out booked slots
+    // Filter slots:
+    // 1. Remove slots where this booking would exceed the closing time.
+    // 2. Remove slots where MAX_BOOKINGS_PER_SLOT concurrent bookings already overlap.
     const availableSlots = timeSlots.filter((slot) => {
       const slotTime = parse(slot, "HH:mm", new Date());
       const slotMinutes = slotTime.getHours() * 60 + slotTime.getMinutes();
       const slotEnd = slotMinutes + serviceDuration;
 
-      // Check if this slot overlaps with any booking
-      return !bookedRanges.some(
+      // Hard cutoff: booking must finish by closing time
+      if (slotEnd > closingTimeMinutes) return false;
+
+      // Count how many existing bookings overlap this slot
+      const overlapCount = bookedRanges.filter(
         (range) =>
           (slotMinutes >= range.start && slotMinutes < range.end) ||
           (slotEnd > range.start && slotEnd <= range.end) ||
           (slotMinutes <= range.start && slotEnd >= range.end)
-      );
+      ).length;
+
+      return overlapCount < maxBookingsPerSlot;
     });
 
     return NextResponse.json({ slots: availableSlots, blocked: false });
@@ -134,9 +175,10 @@ export async function GET(request: Request) {
       (bookingCounts[b.appointment_date] || 0) + 1;
   });
 
-  // Consider a day fully booked if it has 9+ bookings (matching default slots)
+  // A day is fully booked when every default slot is filled to capacity
+  const totalCapacity = DEFAULT_TIME_SLOTS.length * DEFAULT_MAX_BOOKINGS_PER_SLOT;
   const fullyBooked = Object.entries(bookingCounts)
-    .filter(([_, count]) => count >= DEFAULT_TIME_SLOTS.length)
+    .filter(([_, count]) => count >= totalCapacity)
     .map(([date]) => date);
 
   return NextResponse.json({

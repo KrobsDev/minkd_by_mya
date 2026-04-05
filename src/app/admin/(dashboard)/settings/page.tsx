@@ -35,24 +35,47 @@ interface BlockedDate {
   reason: string | null;
 }
 
+const CLOSING_TIME_OPTIONS = [
+  { value: "17:00", label: "5:00 PM" },
+  { value: "18:00", label: "6:00 PM" },
+  { value: "19:00", label: "7:00 PM" },
+  { value: "20:00", label: "8:00 PM" },
+  { value: "21:00", label: "9:00 PM" },
+  { value: "22:00", label: "10:00 PM" },
+];
+
 export default function SettingsPage() {
   const [blockedDates, setBlockedDates] = useState<BlockedDate[]>([]);
   const [blockedWeekdays, setBlockedWeekdays] = useState<number[]>([0]);
+  const [closingTime, setClosingTime] = useState("18:00");
+  const [maxBookingsPerSlot, setMaxBookingsPerSlot] = useState(2);
+  const [maxBookingsInput, setMaxBookingsInput] = useState("2");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savingDays, setSavingDays] = useState(false);
+  const [savingClosingTime, setSavingClosingTime] = useState(false);
+  const [savingMaxBookings, setSavingMaxBookings] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [blockReason, setBlockReason] = useState("");
 
   const fetchData = async () => {
     try {
-      const [datesRes, settingsRes] = await Promise.all([
+      const [datesRes, settingsRes, closingTimeRes, maxBookingsRes] = await Promise.all([
         api.get<BlockedDate[]>("/admin/blocked-dates"),
         api.get<{ value: number[] | null }>("/admin/settings?key=blocked_weekdays"),
+        api.get<{ value: string | null }>("/admin/settings?key=closing_time"),
+        api.get<{ value: number | null }>("/admin/settings?key=max_bookings_per_slot"),
       ]);
       setBlockedDates(datesRes.data);
       if (settingsRes.data.value) {
         setBlockedWeekdays(settingsRes.data.value);
+      }
+      if (closingTimeRes.data.value) {
+        setClosingTime(closingTimeRes.data.value);
+      }
+      if (maxBookingsRes.data.value != null) {
+        setMaxBookingsPerSlot(maxBookingsRes.data.value);
+        setMaxBookingsInput(String(maxBookingsRes.data.value));
       }
     } catch (error) {
       console.error("Error fetching settings:", error);
@@ -89,6 +112,37 @@ export default function SettingsPage() {
       toast.error("Failed to update working days");
     } finally {
       setSavingDays(false);
+    }
+  };
+
+  const handleClosingTimeChange = async (time: string) => {
+    setClosingTime(time);
+    setSavingClosingTime(true);
+    try {
+      await api.post("/admin/settings", { key: "closing_time", value: time });
+      toast.success(`Closing time updated to ${CLOSING_TIME_OPTIONS.find((o) => o.value === time)?.label}`);
+    } catch {
+      toast.error("Failed to update closing time");
+    } finally {
+      setSavingClosingTime(false);
+    }
+  };
+
+  const handleMaxBookingsSave = async () => {
+    const value = parseInt(maxBookingsInput, 10);
+    if (isNaN(value) || value < 1) {
+      toast.error("Please enter a valid number (minimum 1)");
+      return;
+    }
+    setSavingMaxBookings(true);
+    try {
+      await api.post("/admin/settings", { key: "max_bookings_per_slot", value });
+      setMaxBookingsPerSlot(value);
+      toast.success(`Max bookings per slot updated to ${value}`);
+    } catch {
+      toast.error("Failed to update max bookings");
+    } finally {
+      setSavingMaxBookings(false);
     }
   };
 
@@ -177,6 +231,99 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-gray-500 mt-3">
                 Click a day to toggle it. Closed days cannot be booked by customers.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Closing Time</CardTitle>
+              <CardDescription>
+                Set the hard cutoff time for bookings. Services must finish by this time. Default is 6:00 PM (5pm close + 1hr buffer).
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex flex-wrap gap-3">
+                {CLOSING_TIME_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => handleClosingTimeChange(option.value)}
+                    disabled={savingClosingTime}
+                    className={cn(
+                      "px-4 py-3 rounded-lg border text-sm font-medium transition-colors",
+                      closingTime === option.value
+                        ? "bg-pink-600 text-white border-pink-600"
+                        : "bg-white text-gray-700 border-gray-200 hover:bg-pink-50 hover:border-pink-200"
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-end gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="customClosingTime">Custom time</Label>
+                  <Input
+                    id="customClosingTime"
+                    type="time"
+                    defaultValue={CLOSING_TIME_OPTIONS.some((o) => o.value === closingTime) ? "" : closingTime}
+                    onChange={(e) => setClosingTime(e.target.value)}
+                    className="w-36"
+                  />
+                </div>
+                <Button
+                  onClick={() => handleClosingTimeChange(closingTime)}
+                  disabled={savingClosingTime || !closingTime}
+                  className="bg-pink-600 hover:bg-pink-700"
+                >
+                  {savingClosingTime ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    "Set"
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Bookings that would run past this time will not be offered to customers.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Concurrent Bookings Per Slot</CardTitle>
+              <CardDescription>
+                Number of appointments that can be booked at the same time. Set this to match the number of available staff.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-end gap-3">
+                <div className="flex flex-col gap-1">
+                  <Label htmlFor="maxBookings">Max bookings per slot</Label>
+                  <Input
+                    id="maxBookings"
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={maxBookingsInput}
+                    onChange={(e) => setMaxBookingsInput(e.target.value)}
+                    className="w-24"
+                  />
+                </div>
+                <Button
+                  onClick={handleMaxBookingsSave}
+                  disabled={savingMaxBookings || maxBookingsInput === String(maxBookingsPerSlot)}
+                  className="bg-pink-600 hover:bg-pink-700"
+                >
+                  {savingMaxBookings ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Current setting: <span className="font-medium">{maxBookingsPerSlot} booking{maxBookingsPerSlot !== 1 ? "s" : ""} per slot</span>. Increase this when more staff are available.
               </p>
             </CardContent>
           </Card>
