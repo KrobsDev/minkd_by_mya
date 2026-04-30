@@ -37,6 +37,9 @@ export default function Header() {
           <li>
             <Link href={"/booking-policy"}>Booking Policy</Link>
           </li>
+          <li>
+            <Link href={"/visit-us"}>Our Location</Link>
+          </li>
         </ul>
       </nav>
 
@@ -83,6 +86,11 @@ export default function Header() {
             <li>
               <Link href={"/booking-policy"} onClick={() => setOpen(false)}>
                 Booking Policy
+              </Link>
+            </li>
+            <li>
+              <Link href={"/visit-us"} onClick={() => setOpen(false)}>
+                Our Location
               </Link>
             </li>
           </ul>
