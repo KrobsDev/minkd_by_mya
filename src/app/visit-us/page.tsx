@@ -1,19 +1,78 @@
+"use client";
+
 import Image from "next/image";
 import Section from "@/components/layout/Section";
 import { Clock, MapPin, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import api from "@/lib/api/client";
 
-const schedule = [
-  { day: "Monday", time: "Closed", closed: true },
-  { day: "Tuesday", time: "9:00 AM – 6:00 PM", closed: false },
-  { day: "Wednesday", time: "9:00 AM – 6:00 PM", closed: false },
-  { day: "Thursday", time: "9:00 AM – 6:00 PM", closed: false },
-  { day: "Friday", time: "9:00 AM – 6:00 PM", closed: false },
-  { day: "Saturday", time: "10:00 AM – 6:00 PM", closed: false },
-  { day: "Sunday", time: "Closed", closed: true },
+const DAY_NAMES = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
 ];
 
+const DEFAULT_OPENING = "09:00";
+const DEFAULT_CLOSING = "18:00";
+
+function formatTime(time24: string): string {
+  const [h, m] = time24.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const hour12 = h % 12 || 12;
+  return m === 0 ? `${hour12}:00 ${period}` : `${hour12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+type ScheduleRow = {
+  day: string;
+  time: string;
+  closed: boolean;
+};
+
+function buildSchedule(
+  blockedWeekdays: number[],
+  closingTime: string,
+): ScheduleRow[] {
+  return DAY_NAMES.map((day, index) => {
+    const closed = blockedWeekdays.includes(index);
+    return {
+      day,
+      time: closed
+        ? "Closed"
+        : `${formatTime(DEFAULT_OPENING)} – ${formatTime(closingTime)}`,
+      closed,
+    };
+  });
+}
+
 export default function VisitUsPage() {
+  const [schedule, setSchedule] = useState<ScheduleRow[] | null>(null);
+
+  useEffect(() => {
+    async function fetchSchedule() {
+      try {
+        const [weekdayRes, closingRes] = await Promise.all([
+          api.get<{ value: number[] | null }>("/admin/settings?key=blocked_weekdays"),
+          api.get<{ value: string | null }>("/admin/settings?key=closing_time"),
+        ]);
+
+        const blockedWeekdays = weekdayRes.data.value ?? [0]; // default: Sunday blocked
+        const closingTime = closingRes.data.value ?? DEFAULT_CLOSING;
+
+        setSchedule(buildSchedule(blockedWeekdays, closingTime));
+      } catch {
+        // Fallback to defaults if API fails
+        setSchedule(buildSchedule([0], DEFAULT_CLOSING));
+      }
+    }
+
+    fetchSchedule();
+  }, []);
+
   return (
     <div>
       {/* Hero */}
@@ -113,32 +172,40 @@ export default function VisitUsPage() {
 
             {/* Schedule rows */}
             <div className="divide-y divide-gray-100">
-              {schedule.map((item) => (
-                <div
-                  key={item.day}
-                  className="flex items-center justify-between px-6 md:px-8 py-4 hover:bg-pink-50/50 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
+              {schedule
+                ? schedule.map((item) => (
                     <div
-                      className={`w-2 h-2 rounded-full ${
-                        item.closed ? "bg-gray-300" : "bg-green-400"
-                      }`}
-                    />
-                    <span className="font-medium text-gray-800">
-                      {item.day}
-                    </span>
-                  </div>
-                  <span
-                    className={`text-sm font-medium ${
-                      item.closed
-                        ? "text-gray-400"
-                        : "text-gray-600"
-                    }`}
-                  >
-                    {item.time}
-                  </span>
-                </div>
-              ))}
+                      key={item.day}
+                      className="flex items-center justify-between px-6 md:px-8 py-4 hover:bg-pink-50/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            item.closed ? "bg-gray-300" : "bg-green-400"
+                          }`}
+                        />
+                        <span className="font-medium text-gray-800">
+                          {item.day}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-sm font-medium ${
+                          item.closed ? "text-gray-400" : "text-gray-600"
+                        }`}
+                      >
+                        {item.time}
+                      </span>
+                    </div>
+                  ))
+                : Array.from({ length: 7 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between px-6 md:px-8 py-4"
+                    >
+                      <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+                      <div className="h-4 w-36 bg-gray-200 rounded animate-pulse" />
+                    </div>
+                  ))}
             </div>
 
             {/* Footer note */}
