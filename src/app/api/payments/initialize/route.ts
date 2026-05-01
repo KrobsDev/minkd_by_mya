@@ -34,6 +34,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Booking not found" }, { status: 404 });
   }
 
+  if (booking.status === "cancelled") {
+    return NextResponse.json(
+      { error: "This booking has been cancelled" },
+      { status: 409 }
+    );
+  }
+
+  if (booking.payment_status === "paid" || booking.status === "confirmed" || booking.status === "completed") {
+    return NextResponse.json(
+      { error: "This booking is already confirmed and paid for" },
+      { status: 409 }
+    );
+  }
+
   if (!booking.services) {
     return NextResponse.json(
       { error: "Service not found for booking" },
@@ -89,7 +103,11 @@ export async function POST(request: Request) {
   // Update booking with payment reference
   await supabase
     .from("bookings")
-    .update({ paystack_reference: paystackResponse.data.reference })
+    .update({
+      paystack_reference: paystackResponse.data.reference,
+      payment_status: "pending",
+      status: "pending",
+    })
     .eq("id", bookingId);
 
   return NextResponse.json({

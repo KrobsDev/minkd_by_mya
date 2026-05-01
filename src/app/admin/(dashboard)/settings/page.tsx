@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Calendar } from "@/components/ui/calendar";
 import { toast } from "sonner";
 import { Plus, X, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { format, startOfDay } from "date-fns";
 import api from "@/lib/api/client";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +57,7 @@ export default function SettingsPage() {
   const [savingMaxBookings, setSavingMaxBookings] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [blockReason, setBlockReason] = useState("");
+  const today = startOfDay(new Date());
 
   const fetchData = async () => {
     try {
@@ -348,7 +349,7 @@ export default function SettingsPage() {
                       selected={selectedDate}
                       onSelect={setSelectedDate}
                       disabled={(date) =>
-                        date < new Date() ||
+                        startOfDay(date) < today ||
                         blockedDateStrings.includes(
                           format(date, "yyyy-MM-dd")
                         )

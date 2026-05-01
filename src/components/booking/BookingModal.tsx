@@ -29,6 +29,8 @@ import api from "@/lib/api/client";
 import type { Service } from "@/lib/models/service";
 import { toast } from "sonner";
 import Link from "next/link";
+import { getDefaultTimeSlotsForDate } from "@/lib/booking-constants";
+import axios from "axios";
 
 declare global {
   interface Window {
@@ -81,17 +83,14 @@ interface BookingFormData {
   notes: string;
 }
 
-const TIME_SLOTS = [
-  "09:00", "10:00", "11:00", "12:00",
-  "13:00", "14:00", "15:00", "16:00", "17:00",
-];
-
 export default function BookingModal({ services, open, onOpenChange }: BookingModalProps) {
   const primaryService = services[0];
   const [step, setStep] = useState<BookingStep>("datetime");
   const [loading, setLoading] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [availableSlots, setAvailableSlots] = useState<string[]>(TIME_SLOTS);
+  const [availableSlots, setAvailableSlots] = useState<string[]>(
+    getDefaultTimeSlotsForDate(new Date())
+  );
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [bookingIds, setBookingIds] = useState<string[]>([]);
   const [primaryBookingId, setPrimaryBookingId] = useState<string | null>(null);
@@ -99,6 +98,7 @@ export default function BookingModal({ services, open, onOpenChange }: BookingMo
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [tempHideModal, setTempHideModal] = useState(false);
   const [blockedWeekdays, setBlockedWeekdays] = useState<number[]>([0]);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<BookingFormData>({
     date: null,
@@ -123,9 +123,17 @@ export default function BookingModal({ services, open, onOpenChange }: BookingMo
 
   useEffect(() => {
     if (open) {
-      api
-        .get<{ value: number[] | null }>("/admin/settings?key=blocked_weekdays")
-        .then(({ data }) => { if (data.value) setBlockedWeekdays(data.value); })
+      Promise.all([
+        api.get<{ value: number[] | null }>("/admin/settings?key=blocked_weekdays"),
+        api.get<{ blockedDates?: string[] }>("/availability"),
+      ])
+        .then(([settingsRes, availabilityRes]) => {
+          if (settingsRes.data.value) {
+            setBlockedWeekdays(settingsRes.data.value);
+          }
+
+          setBlockedDates(availabilityRes.data.blockedDates || []);
+        })
         .catch(() => {});
     }
   }, [open]);
@@ -137,9 +145,11 @@ export default function BookingModal({ services, open, onOpenChange }: BookingMo
       const { data } = await api.get("/availability", {
         params: { date: format(date, "yyyy-MM-dd"), duration: totalDurationMinutes },
       });
-      setAvailableSlots(data.blocked ? [] : (data.slots || TIME_SLOTS));
+      setAvailableSlots(
+        data.blocked ? [] : data.slots || getDefaultTimeSlotsForDate(date)
+      );
     } catch {
-      setAvailableSlots(TIME_SLOTS);
+      setAvailableSlots(getDefaultTimeSlotsForDate(date));
     } finally {
       setSlotsLoading(false);
     }
@@ -179,7 +189,13 @@ export default function BookingModal({ services, open, onOpenChange }: BookingMo
       await handlePayment(ids);
     } catch (error) {
       console.error("Booking error:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to create booking");
+      toast.error(
+        axios.isAxiosError<{ error?: string }>(error)
+          ? error.response?.data?.error || error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to create booking"
+      );
       setLoading(false);
     }
   };
@@ -260,7 +276,7 @@ export default function BookingModal({ services, open, onOpenChange }: BookingMo
       setPrimaryBookingId(null);
       setPaymentComplete(false);
       setTempHideModal(false);
-      setAvailableSlots(TIME_SLOTS);
+      setAvailableSlots(getDefaultTimeSlotsForDate(new Date()));
     }, 300);
   };
 
@@ -276,7 +292,10 @@ export default function BookingModal({ services, open, onOpenChange }: BookingMo
   };
 
   const isDateDisabled = (date: Date) =>
-    isBefore(date, today) || isBefore(maxDate, date) || blockedWeekdays.includes(date.getDay());
+    isBefore(date, today) ||
+    isBefore(maxDate, date) ||
+    blockedWeekdays.includes(date.getDay()) ||
+    blockedDates.includes(format(date, "yyyy-MM-dd"));
 
   // Compute per-service start times for the summary
   const getServiceSchedule = () => {

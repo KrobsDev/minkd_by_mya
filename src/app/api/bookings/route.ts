@@ -1,10 +1,36 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
-import { parse } from "date-fns";
 import {
   DEFAULT_MAX_BOOKINGS_PER_SLOT,
   DEFAULT_CLOSING_TIME_MINUTES,
+  timeStringToMinutes,
 } from "@/lib/booking-constants";
+import { isTimeSlotAvailable } from "@/lib/booking-availability";
+
+type ExistingBooking = {
+  id: string;
+  status: string;
+  payment_status: string;
+  service_id: string;
+  booking_services: { service_id: string }[] | null;
+};
+
+function getBookingServiceIds(booking: ExistingBooking) {
+  const serviceIds =
+    booking.booking_services && booking.booking_services.length > 0
+      ? booking.booking_services.map((bookingService) => bookingService.service_id)
+      : [booking.service_id];
+
+  return [...new Set(serviceIds)].sort();
+}
+
+function sameServiceSet(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return left.every((serviceId, index) => serviceId === right[index]);
+}
 
 export async function GET() {
   const supabase = await createServiceClient();
@@ -53,6 +79,10 @@ export async function POST(request: Request) {
 
     const supabase = await createClient();
     const allServiceIds: string[] = [serviceId, ...additionalServiceIds];
+    const requestedServiceIds = [...new Set(allServiceIds)].sort();
+    const normalizedCustomerName = customerName.trim();
+    const normalizedCustomerEmail = customerEmail.trim().toLowerCase();
+    const normalizedCustomerPhone = customerPhone.trim();
 
     // Validate all services exist and get their durations
     const { data: services, error: serviceError } = await supabase
@@ -63,6 +93,8 @@ export async function POST(request: Request) {
     if (serviceError || !services || services.length === 0) {
       return NextResponse.json({ error: "Service not found" }, { status: 404 });
     }
+
+    const primaryService = services.find((service) => service.id === serviceId) ?? services[0];
 
     // Fetch admin-configurable settings in parallel
     const [{ data: closingTimeSetting }, { data: maxBookingsSetting }] =
@@ -83,8 +115,7 @@ export async function POST(request: Request) {
         : DEFAULT_MAX_BOOKINGS_PER_SLOT;
 
     // Validate that the booking finishes by closing time
-    const startTime = parse(appointmentTime, "HH:mm", new Date());
-    const startMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+    const startMinutes = timeStringToMinutes(appointmentTime);
     const totalDuration = services.reduce(
       (sum, s) => sum + (s.duration_minutes ?? 60),
       0
@@ -114,17 +145,82 @@ export async function POST(request: Request) {
       );
     }
 
-    // Count existing bookings for this slot — reject if at capacity
-    const { count: slotCount } = await supabase
+    const { data: existingCustomerBookings } = await supabase
       .from("bookings")
-      .select("id", { count: "exact", head: true })
+      .select("id, status, payment_status, service_id, booking_services(service_id)")
       .eq("appointment_date", appointmentDate)
       .eq("appointment_time", appointmentTime)
+      .ilike("customer_email", normalizedCustomerEmail)
+      .eq("customer_phone", normalizedCustomerPhone)
       .neq("status", "cancelled");
 
-    if ((slotCount ?? 0) >= maxBookingsPerSlot) {
+    const duplicateBooking = (existingCustomerBookings || []).find((booking) =>
+      sameServiceSet(getBookingServiceIds(booking as ExistingBooking), requestedServiceIds)
+    ) as ExistingBooking | undefined;
+
+    if (duplicateBooking) {
+      const alreadyConfirmed =
+        duplicateBooking.payment_status === "paid" ||
+        duplicateBooking.status === "confirmed" ||
+        duplicateBooking.status === "completed";
+
+      if (alreadyConfirmed) {
+        return NextResponse.json(
+          {
+            error:
+              "You already have a confirmed booking for this date and time.",
+          },
+          { status: 409 }
+        );
+      }
+
+      return NextResponse.json({
+        booking: { id: duplicateBooking.id },
+        paystackLink: primaryService.paystack_link,
+        reusedExistingBooking: true,
+      });
+    }
+
+    if ((existingCustomerBookings || []).length > 0) {
       return NextResponse.json(
-        { error: "This time slot is fully booked. Please choose a different time." },
+        {
+          error:
+            "You already have a booking at this time. Please choose a different slot or update the existing booking.",
+        },
+        { status: 409 }
+      );
+    }
+
+    const { data: availability } = await supabase
+      .from("availability")
+      .select("start_time, end_time")
+      .eq("date", appointmentDate)
+      .eq("is_available", true);
+
+    const { data: existingBookings } = await supabase
+      .from("bookings")
+      .select(
+        "appointment_time, booking_services(services:service_id(duration_minutes))"
+      )
+      .eq("appointment_date", appointmentDate)
+      .neq("status", "cancelled");
+
+    const slotIsAvailable = isTimeSlotAvailable({
+      date: appointmentDate,
+      availability,
+      bookings: existingBookings,
+      requestedDurationMinutes: totalDuration,
+      closingTimeMinutes,
+      maxBookingsPerSlot,
+      requestedTime: appointmentTime,
+    });
+
+    if (!slotIsAvailable) {
+      return NextResponse.json(
+        {
+          error:
+            "This time slot is no longer available. Please choose a different time.",
+        },
         { status: 409 }
       );
     }
@@ -134,9 +230,9 @@ export async function POST(request: Request) {
       .from("bookings")
       .insert({
         service_id: serviceId,
-        customer_name: customerName,
-        customer_email: customerEmail,
-        customer_phone: customerPhone,
+        customer_name: normalizedCustomerName,
+        customer_email: normalizedCustomerEmail,
+        customer_phone: normalizedCustomerPhone,
         appointment_date: appointmentDate,
         appointment_time: appointmentTime,
         notes: notes || null,
@@ -160,8 +256,6 @@ export async function POST(request: Request) {
     if (servicesError) {
       console.error("Failed to insert booking_services:", servicesError);
     }
-
-    const primaryService = services.find((s) => s.id === serviceId) ?? services[0];
 
     return NextResponse.json({ booking, paystackLink: primaryService.paystack_link });
   } catch (error) {

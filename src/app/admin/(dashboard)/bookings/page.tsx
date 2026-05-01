@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import {
   Table,
   TableBody,
@@ -21,8 +22,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Search, RefreshCw } from "lucide-react";
+import { CalendarDays, RefreshCw, Search, X } from "lucide-react";
 import api from "@/lib/api/client";
 
 interface BookingService {
@@ -53,6 +60,8 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [serviceFilter, setServiceFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<DateRange | undefined>();
 
   const fetchBookings = async () => {
     setLoading(true);
@@ -104,8 +113,57 @@ export default function BookingsPage() {
     const matchesStatus =
       statusFilter === "all" || booking.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
+    const matchesService =
+      serviceFilter === "all" ||
+      booking.booking_services?.some(
+        (bookingService) => bookingService.service_id === serviceFilter
+      );
+
+    let matchesDate = true;
+    if (dateFilter?.from) {
+      const bookingDate = booking.appointment_date;
+      const fromDate = format(dateFilter.from, "yyyy-MM-dd");
+
+      if (!dateFilter.to) {
+        matchesDate = bookingDate === fromDate;
+      } else {
+        const toDate = format(dateFilter.to, "yyyy-MM-dd");
+        matchesDate = bookingDate >= fromDate && bookingDate <= toDate;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesService && matchesDate;
   });
+
+  const availableServices = bookings
+    .flatMap((booking) => booking.booking_services || [])
+    .filter(
+      (bookingService, index, services) =>
+        bookingService.services?.name &&
+        services.findIndex(
+          (service) => service.service_id === bookingService.service_id
+        ) === index
+    )
+    .sort((left, right) =>
+      (left.services?.name || "").localeCompare(right.services?.name || "")
+    );
+
+  const dateFilterLabel = dateFilter?.from
+    ? dateFilter.to
+      ? `${format(dateFilter.from, "MMM d, yyyy")} - ${format(dateFilter.to, "MMM d, yyyy")}`
+      : format(dateFilter.from, "MMM d, yyyy")
+    : "Any date";
+
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    serviceFilter !== "all" ||
+    Boolean(dateFilter?.from);
+
+  const clearFilters = () => {
+    setStatusFilter("all");
+    setServiceFilter("all");
+    setDateFilter(undefined);
+  };
 
   const getStatusBadge = (status: Booking["status"]) => {
     const variants: Record<
@@ -151,7 +209,7 @@ export default function BookingsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -161,18 +219,80 @@ export default function BookingsPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="confirmed">Confirmed</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-                <SelectItem value="cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full lg:w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={serviceFilter} onValueChange={setServiceFilter}>
+                <SelectTrigger className="w-full lg:w-[220px]">
+                  <SelectValue placeholder="Filter by service" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Services</SelectItem>
+                  {availableServices.map((service) => (
+                    <SelectItem
+                      key={service.service_id}
+                      value={service.service_id}
+                    >
+                      {service.services?.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal lg:w-[260px]"
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {dateFilterLabel}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-auto p-0">
+                  <div className="border-b px-4 py-3">
+                    <p className="text-sm font-medium">Filter by date</p>
+                    <p className="text-xs text-gray-500">
+                      Pick a single day or a full date range.
+                    </p>
+                  </div>
+                  <Calendar
+                    mode="range"
+                    selected={dateFilter}
+                    onSelect={setDateFilter}
+                    numberOfMonths={2}
+                    className="rounded-md"
+                  />
+                  <div className="flex justify-end border-t px-4 py-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setDateFilter(undefined)}
+                    >
+                      Clear dates
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              {hasActiveFilters ? (
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <X className="mr-2 h-4 w-4" />
+                  Clear filters
+                </Button>
+              ) : null}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
