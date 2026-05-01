@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 export const size = {
   width: 1200,
@@ -8,8 +10,14 @@ export const size = {
 export const contentType = "image/png";
 
 export const alt = "Mink'd by Mya";
+export const runtime = "nodejs";
 
-export default function OpenGraphImage() {
+export default async function OpenGraphImage() {
+  const logoBuffer = await readFile(
+    path.join(process.cwd(), "public", "images", "logo.PNG")
+  );
+  const logoSrc = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+
   return new ImageResponse(
     (
       <div
@@ -53,19 +61,28 @@ export default function OpenGraphImage() {
           >
             <div
               style={{
-                width: 72,
-                height: 72,
-                borderRadius: 999,
-                border: "2px solid rgba(255,255,255,0.4)",
+                width: 104,
+                height: 104,
+                borderRadius: 28,
+                background: "rgba(255,255,255,0.96)",
+                padding: 12,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 28,
-                fontWeight: 700,
-                letterSpacing: 2,
+                boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
               }}
             >
-              MM
+              <img
+                src={logoSrc}
+                alt="Mink'd by Mya logo"
+                width={80}
+                height={80}
+                style={{
+                  width: 80,
+                  height: 80,
+                  objectFit: "contain",
+                }}
+              />
             </div>
             <div
               style={{
