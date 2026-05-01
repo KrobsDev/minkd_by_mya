@@ -19,9 +19,34 @@ const dancingScript = Dancing_Script({
   subsets: ["latin"],
 });
 
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+const socialImage = "/images/logo.PNG";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(appUrl),
   title: "Mink'd by Mya",
-  description: "Your best lash tech",
+  description: "Luxury lash and beauty appointments with Mink'd by Mya.",
+  openGraph: {
+    title: "Mink'd by Mya",
+    description: "Luxury lash and beauty appointments with Mink'd by Mya.",
+    url: appUrl,
+    siteName: "Mink'd by Mya",
+    type: "website",
+    images: [
+      {
+        url: socialImage,
+        width: 1631,
+        height: 1155,
+        alt: "Mink'd by Mya",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Mink'd by Mya",
+    description: "Luxury lash and beauty appointments with Mink'd by Mya.",
+    images: [socialImage],
+  },
 };
 
 export default function RootLayout({
