@@ -78,7 +78,24 @@ export async function POST(request: Request) {
     `);
 
   if (bookingError) {
-    console.error("Error updating bookings:", bookingError);
+    console.error(
+      `[verify] Error updating bookings ${resolvedIds.join(",")} for reference=${reference}:`,
+      bookingError
+    );
+    return NextResponse.json(
+      { error: "Failed to confirm booking", details: bookingError.message },
+      { status: 500 }
+    );
+  }
+
+  if (!updatedBookings || updatedBookings.length === 0) {
+    console.error(
+      `[verify] No bookings matched ids=${resolvedIds.join(",")} for reference=${reference}`
+    );
+    return NextResponse.json(
+      { error: "No matching bookings to confirm" },
+      { status: 404 }
+    );
   }
 
   let calendarStatus: { ok: boolean; eventId?: string | null; error?: string } | null = null;
@@ -144,23 +161,40 @@ export async function POST(request: Request) {
   }
 
   // Record transaction
-  const { data: existingTransaction } = await supabase
+  const { data: existingTransaction, error: existingTransactionError } = await supabase
     .from("transactions")
     .select("id")
     .eq("paystack_reference", reference)
-    .single();
+    .maybeSingle();
+
+  if (existingTransactionError) {
+    console.error(
+      `[verify] Error checking existing transaction for reference=${reference}:`,
+      existingTransactionError
+    );
+  }
 
   if (!existingTransaction) {
-    await supabase.from("transactions").insert({
-      booking_id: resolvedIds[0] || null,
-      paystack_reference: reference,
-      amount: paymentData.amount / 100,
-      currency: paymentData.currency,
-      status: "success",
-      customer_email: paymentData.customer?.email || "unknown",
-      service_name: paymentData.metadata?.service_name || "Unknown Service",
-      metadata: paymentData,
-    });
+    const { error: transactionInsertError } = await supabase
+      .from("transactions")
+      .insert({
+        booking_id: resolvedIds[0] || null,
+        paystack_reference: reference,
+        amount: paymentData.amount / 100,
+        currency: paymentData.currency,
+        status: "success",
+        customer_email: paymentData.customer?.email || "unknown",
+        service_name: paymentData.metadata?.service_name || "Unknown Service",
+        metadata: paymentData,
+      });
+
+    // 23505 = unique_violation: webhook beat us to it, which is fine.
+    if (transactionInsertError && transactionInsertError.code !== "23505") {
+      console.error(
+        `[verify] Error inserting transaction for reference=${reference}:`,
+        transactionInsertError
+      );
+    }
   }
 
   return NextResponse.json({
