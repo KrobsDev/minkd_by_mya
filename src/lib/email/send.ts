@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import {
   getCustomerConfirmationEmail,
   getAdminNotificationEmail,
+  getCustomerReminderEmail,
 } from "./templates";
 
 interface SendBookingEmailsParams {
@@ -22,8 +23,13 @@ interface SendEmailResult {
   adminEmailId?: string;
 }
 
+type SendAppointmentReminderEmailParams = Omit<
+  SendBookingEmailsParams,
+  "customerPhone"
+>;
+
 export async function sendBookingConfirmationEmails(
-  params: SendBookingEmailsParams
+  params: SendBookingEmailsParams,
 ): Promise<SendEmailResult> {
   const {
     customerName,
@@ -108,13 +114,86 @@ export async function sendBookingConfirmationEmails(
       customerEmailId: customerEmailResult.messageId,
       adminEmailId: adminEmailResult.messageId,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to send emails";
     console.error("❌ Error sending booking emails:", error);
 
     return {
       success: true, // Don't block booking even if email fails
       skipped: true,
-      error: error.message || "Failed to send emails",
+      error: message,
+    };
+  }
+}
+
+export async function sendAppointmentReminderEmail(
+  params: SendAppointmentReminderEmailParams,
+): Promise<SendEmailResult> {
+  const {
+    customerName,
+    customerEmail,
+    serviceName,
+    appointmentDate,
+    appointmentTime,
+    bookingReference,
+  } = params;
+
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  if (!smtpUser || !smtpPass) {
+    console.warn("SMTP credentials not configured. Skipping reminder email.");
+    return {
+      success: false,
+      skipped: true,
+      error: "Email service not configured",
+    };
+  }
+
+  const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true,
+    auth: {
+      user: smtpUser,
+      pass: smtpPass,
+    },
+  });
+
+  const fromEmail = process.env.BUSINESS_EMAIL || smtpUser;
+
+  try {
+    const customerEmailResult = await transporter.sendMail({
+      from: `"Mink'd by Mya" <${fromEmail}>`,
+      to: customerEmail,
+      subject: `Appointment Reminder - ${serviceName}`,
+      html: getCustomerReminderEmail({
+        customerName,
+        serviceName,
+        appointmentDate,
+        appointmentTime,
+        bookingReference,
+      }),
+    });
+
+    console.log("Appointment reminder email sent:", {
+      messageId: customerEmailResult.messageId,
+      to: customerEmail,
+    });
+
+    return {
+      success: true,
+      customerEmailId: customerEmailResult.messageId,
+    };
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Failed to send reminder email";
+    console.error("Error sending appointment reminder email:", error);
+
+    return {
+      success: false,
+      error: message,
     };
   }
 }

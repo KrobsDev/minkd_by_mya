@@ -111,6 +111,7 @@ export type Database = {
           payment_reference: string | null
           payment_status: string
           paystack_reference: string | null
+          reminder_24h_sent_at: string | null
           service_id: string
           status: string
           updated_at: string | null
@@ -127,6 +128,7 @@ export type Database = {
           payment_reference?: string | null
           payment_status?: string
           paystack_reference?: string | null
+          reminder_24h_sent_at?: string | null
           service_id: string
           status?: string
           updated_at?: string | null
@@ -143,6 +145,7 @@ export type Database = {
           payment_reference?: string | null
           payment_status?: string
           paystack_reference?: string | null
+          reminder_24h_sent_at?: string | null
           service_id?: string
           status?: string
           updated_at?: string | null

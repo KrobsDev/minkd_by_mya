@@ -42,6 +42,7 @@ CREATE TABLE bookings (
   payment_reference TEXT,
   paystack_reference TEXT,
   notes TEXT,
+  reminder_24h_sent_at TIMESTAMP WITH TIME ZONE,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -94,6 +95,8 @@ INSERT INTO settings (key, value) VALUES
 CREATE INDEX idx_bookings_date ON bookings(appointment_date);
 CREATE INDEX idx_bookings_status ON bookings(status);
 CREATE INDEX idx_bookings_email ON bookings(customer_email);
+CREATE INDEX idx_bookings_reminder_24h ON bookings(appointment_date, reminder_24h_sent_at)
+  WHERE status = 'confirmed' AND payment_status = 'paid';
 CREATE INDEX idx_transactions_reference ON transactions(paystack_reference);
 CREATE INDEX idx_services_category ON services(category_id);
 CREATE INDEX idx_availability_date ON availability(date);
